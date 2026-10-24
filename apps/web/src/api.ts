@@ -39,8 +39,11 @@ export interface MoiCitoyen {
   numero: string;
   prenom: string;
   nom: string;
+  dateNaissance: string | null;
   modeSimplifie: boolean;
+  photoPriseLe: string | null;
   pourQui: { numero: string; nom: string; lien: string }[];
+  mandataires: { nom: string; niveau: number; niveauNom: string; debut: string; fin: string | null }[];
 }
 export interface MoiEmploye {
   type: 'employe';
@@ -63,9 +66,9 @@ export interface Adaptation { id: string; titre: string; detail: string }
 export interface Maladie { id: string; libelle: string; dispositif: boolean; depuis: string | null; note: string | null }
 export interface Volontes { niveauSoins: 'A' | 'B' | 'C' | 'D' | null; directives: boolean; donOrganes: boolean | null }
 export interface Vaccin { id: string; donneLe: string; produit: string; lieu: string; note: string | null }
-export interface Identite { prenom: string | null; nom: string | null; dateNaissance: string | null; datePrevue: string | null; sexe: string | null; lieuNaissance: string | null; dateDeces: string | null }
+export interface Identite { prenom: string | null; nom: string | null; dateNaissance: string | null; datePrevue: string | null; sexe: string | null; lieuNaissance: string | null; dateDeces: string | null; photoPriseLe: string | null }
 export interface Droit { donnee: string; libelle: string; permis: boolean; raison: string }
-export interface EntreeQuiAVu { no: number; le: string; donnee: string; action: string; urgence: boolean; qui: string; precision: string; signale: boolean }
+export interface EntreeQuiAVu { no: number; le: string; donnee: string; action: string; urgence: boolean; qui: string; employeId: string | null; precision: string; signale: boolean }
 export interface GroupeFamille { groupe: string; libelle: string; personnes: { numero: string; nom: string; statut: string; age: number | null; deces: string | null }[] }
 export interface FicheUrgence {
   acces: { raison: string; urgence: boolean; expireLe: string | null };

@@ -15,7 +15,8 @@ export default defineConfig({
   workers: 1,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',
-  use: { baseURL: WEB, locale: 'fr-CA', timezoneId: 'America/Toronto', trace: 'retain-on-failure' },
+  // Mouvement réduit : axe mesure les contrastes sur l'état final, pas en pleine apparition animée.
+  use: { baseURL: WEB, locale: 'fr-CA', timezoneId: 'America/Toronto', trace: 'retain-on-failure', contextOptions: { reducedMotion: 'reduce' } },
   projects: [
     { name: 'mobile', use: { ...devices['Pixel 7'] }, testIgnore: /captures/ },
     { name: 'ordinateur', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } }, testIgnore: /captures/ },

@@ -4,12 +4,9 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { FournisseurSession } from './session';
 // Polices hébergées avec l'application : aucune requête vers un tiers (confidentialité, souveraineté).
-import '@fontsource/open-sans/latin-400.css';
-import '@fontsource/open-sans/latin-600.css';
-import '@fontsource/open-sans/latin-700.css';
-import '@fontsource/roboto/latin-400.css';
-import '@fontsource/roboto/latin-700.css';
-import '@fontsource/roboto-mono/latin-500.css';
+// Atkinson Hyperlegible Next : conçue par le Braille Institute pour les personnes malvoyantes.
+import '@fontsource-variable/atkinson-hyperlegible-next';
+import '@fontsource-variable/atkinson-hyperlegible-mono';
 import './styles.css';
 
 createRoot(document.getElementById('racine')!).render(

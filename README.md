@@ -10,9 +10,14 @@ Le dossier de santé public du Québec, de la naissance à la fin de vie : un id
 
 Toutes les captures se trouvent dans [`docs/captures`](docs/captures) et se régénèrent avec `npm run captures`.
 
+Les portraits sont générés par IA : ces personnes n'existent pas. Les prompts sont dans [`docs/photos/prompts.md`](docs/photos/prompts.md) et les images dans `apps/api/db/photos`.
+
 ## Ce que fait la version 0.2
 
 **Pour les citoyens et leurs proches**
+- Carte santé numérique : photo d'identification, numéro QC et code QR généré localement.
+- Tableau de bord : ce qu'il y a à faire, le prochain rendez-vous, les médicaments du jour et la dernière consultation du dossier.
+- Profil : photo et date de la prochaine, coordonnées, personnes de confiance.
 - Connexion avec le numéro QC. Une faute de frappe est détectée avant tout envoi.
 - Rendez-vous : confirmer, ou choisir une autre plage parmi celles qui sont offertes.
 - Médicaments regroupés selon le moment de la journée, carnet de vaccination.
@@ -32,7 +37,8 @@ Toutes les captures se trouvent dans [`docs/captures`](docs/captures) et se rég
 - Journal chaîné que la base refuse de modifier ([0002](docs/decisions/0002-journal.md)).
 - « Aucune allergie connue » n'existe que si un professionnel l'a constaté et signé.
 - Accessibilité vérifiée automatiquement à chaque modification, selon le SGQRI 008 3.0 (WCAG 2.1 AA, et des critères des WCAG 2.2).
-- Polices hébergées avec l'application, aucune requête vers un tiers.
+- Police Atkinson Hyperlegible Next (Braille Institute), hébergée avec l'application : aucune requête vers un tiers.
+- La photo d'une personne passe par la passerelle et s'inscrit au journal, comme toute donnée d'identité.
 
 ## Structure
 
@@ -70,7 +76,7 @@ En développement, aucun texto n'est envoyé : le code s'affiche à l'écran.
 
 ```bash
 npm run verifier-types   # TypeScript strict
-npm test                 # 18 tests du noyau, 21 tests de l'API par HTTP
+npm test                 # 18 tests du noyau, 24 tests de l'API par HTTP
 npm run e2e              # 20 parcours dans un navigateur, téléphone et ordinateur, avec axe
 ```
 

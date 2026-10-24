@@ -14,6 +14,7 @@ const ORDINATEUR = { width: 1280, height: 860 };
 async function capturer(page: Page, nom: string) {
   await page.waitForLoadState('networkidle');
   await page.evaluate(() => document.fonts.ready);
+  await page.waitForTimeout(700); // fin des apparitions animées
   await page.screenshot({ path: `${DOSSIER}/${nom}.png`, fullPage: true });
 }
 
@@ -21,6 +22,9 @@ test('parcours citoyen', async ({ page }) => {
   await page.setViewportSize(TELEPHONE);
   await page.goto('/connexion');
   await capturer(page, '01-connexion-telephone');
+  await page.setViewportSize(ORDINATEUR);
+  await capturer(page, '00-connexion-ordinateur');
+  await page.setViewportSize(TELEPHONE);
   await connecterCitoyen(page, NUMEROS.gisele);
   await capturer(page, '02-accueil-telephone');
   await page.goto('/rendez-vous');
@@ -34,12 +38,16 @@ test('parcours citoyen', async ({ page }) => {
   await capturer(page, '06-vaccins-ordinateur');
   await page.goto('/qui-a-vu');
   await capturer(page, '07-qui-a-vu-ordinateur');
+  await page.goto('/');
+  await capturer(page, '12-accueil-ordinateur');
+  await page.goto('/profil');
+  await capturer(page, '13-profil-ordinateur');
 });
 
 test('aidante', async ({ page }) => {
   await page.setViewportSize(TELEPHONE);
   await connecterCitoyen(page, NUMEROS.nadia);
-  await page.getByRole('link', { name: /Gisèle Tremblay/ }).click();
+  await page.getByRole('main').getByRole('link', { name: /Gisèle Tremblay/ }).click();
   await capturer(page, '08-aidante-telephone');
 });
 

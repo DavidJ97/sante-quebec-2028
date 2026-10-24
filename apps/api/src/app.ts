@@ -81,8 +81,9 @@ export function construireApp(o: Options) {
   app.setErrorHandler((err, req, rep) => {
     if (err instanceof ErreurHttp) return rep.status(err.statut).send({ code: err.code, message: err.message });
     if (err instanceof TransitionInterdite) return rep.status(409).send({ code: 'conflit', message: err.message });
-    if ((err as { statusCode?: number }).statusCode && (err as { statusCode: number }).statusCode < 500) {
-      return rep.status((err as { statusCode: number }).statusCode).send({ code: 'requete_invalide', message: err.message });
+    const e = err as { statusCode?: number; message?: string };
+    if (e.statusCode && e.statusCode < 500) {
+      return rep.status(e.statusCode).send({ code: 'requete_invalide', message: e.message ?? 'Requête invalide' });
     }
     req.log.error(err);
     return rep.status(500).send({ code: 'erreur_interne', message: 'Erreur interne. Réessayez dans un moment.' });

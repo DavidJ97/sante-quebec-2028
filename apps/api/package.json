@@ -10,10 +10,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@sante/noyau": "*",
     "@electric-sql/pglite": "0.2.15",
-    "@fastify/cookie": "11.0.2",
-    "fastify": "5.2.1",
+    "@fastify/cookie": "^11.1.3",
+    "@sante/noyau": "*",
+    "fastify": "^5.12.7",
     "pg": "8.13.1"
   },
   "devDependencies": {

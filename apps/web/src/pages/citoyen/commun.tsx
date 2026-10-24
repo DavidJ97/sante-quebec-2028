@@ -14,10 +14,18 @@ export function useCible() {
   const estMoi = cible === m.numero;
   const autre = m.pourQui.find((p) => p.numero === cible);
   const nom = estMoi ? `${m.prenom} ${m.nom}` : autre?.nom ?? 'Cette personne';
-  const fil: Miette[] = estMoi
-    ? [{ vers: '/', texte: 'Accueil' }]
-    : [{ vers: '/', texte: 'Accueil' }, { vers: `/pour/${cible}`, texte: nom }];
-  /** Titre adapté : « Mes médicaments » ou « Médicaments » avec le nom en sur-titre. */
+  const fil: Miette[] | undefined = estMoi ? undefined : [{ vers: '/', texte: 'Accueil' }, { vers: `/pour/${cible}`, texte: nom }];
   const titre = (moi: string, autreTitre: string) => (estMoi ? moi : autreTitre);
   return { moi: m, numero: cible, estMoi, nom, lien: autre?.lien, fil, titre, surTitre: estMoi ? undefined : nom };
+}
+
+/** « dans 4 jours », « demain », « aujourd'hui », « il y a 9 jours ». */
+export function relatif(iso: string, maintenant = new Date()): string {
+  const jour = (d: Date) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+  const ecart = Math.round((jour(new Date(iso)) - jour(maintenant)) / 86_400_000);
+  if (ecart === 0) return 'aujourd\'hui';
+  if (ecart === 1) return 'demain';
+  if (ecart === -1) return 'hier';
+  if (ecart > 1) return `dans ${ecart} jours`;
+  return `il y a ${-ecart} jours`;
 }

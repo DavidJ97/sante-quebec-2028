@@ -2,12 +2,12 @@
 
 import type { Adaptation, Allergies, Maladie, Medicament, Volontes } from '../api';
 import { CERTITUDE, GRAVITE, jourAnnee } from '../format';
-import { Rubrique } from './Gabarit';
+import { Carte } from './Gabarit';
 
 export function RubriqueAllergies({ a, pourClinicien }: { a: Allergies; pourClinicien?: boolean }) {
   const grave = a.elements.some((x) => x.gravite === 'grave');
   return (
-    <Rubrique nom="allergies" titre="Allergies" alerte={grave}>
+    <Carte nom="allergies" titre="Allergies" alerte={grave}>
       {a.etat === 'presentes' && (
         <ul className="elements">
           {a.elements.map((x) => (
@@ -36,13 +36,13 @@ export function RubriqueAllergies({ a, pourClinicien }: { a: Allergies; pourClin
             : 'Aucun professionnel n\'a encore vérifié vos allergies. Parlez-en à votre prochain rendez-vous.'}</p>
         </>
       )}
-    </Rubrique>
+    </Carte>
   );
 }
 
 export function RubriqueMedicaments({ m }: { m: Medicament[] }) {
   return (
-    <Rubrique nom="medicaments" titre="Médicaments actifs">
+    <Carte nom="medicaments" titre="Médicaments actifs">
       {m.length === 0 ? <p>Aucun médicament actif au Dossier santé Québec.</p> : (
         <ul className="elements">
           {m.map((x) => (
@@ -55,23 +55,23 @@ export function RubriqueMedicaments({ m }: { m: Medicament[] }) {
         </ul>
       )}
       {m.length > 0 && <p className="secondaire petit">Source : {[...new Set(m.map((x) => x.source))].join(', ')}</p>}
-    </Rubrique>
+    </Carte>
   );
 }
 
 export function RubriqueAdaptation({ a }: { a: Adaptation[] }) {
   return (
-    <Rubrique nom="adaptation" titre="Besoins d'adaptation">
+    <Carte nom="adaptation" titre="Besoins d'adaptation">
       {a.length === 0 ? <p>Aucun besoin inscrit.</p> : (
         <ul className="elements">{a.map((x) => <li key={x.id}><span className="nom">{x.titre}</span><span>{x.detail}</span></li>)}</ul>
       )}
-    </Rubrique>
+    </Carte>
   );
 }
 
 export function RubriqueMaladies({ m }: { m: Maladie[] }) {
   return (
-    <Rubrique nom="maladies" titre="Maladies et dispositifs à risque">
+    <Carte nom="maladies" titre="Maladies et dispositifs à risque">
       {m.length === 0 ? <p>Rien d'inscrit.</p> : (
         <ul className="elements">
           {m.map((x) => (
@@ -83,7 +83,7 @@ export function RubriqueMaladies({ m }: { m: Maladie[] }) {
           ))}
         </ul>
       )}
-    </Rubrique>
+    </Carte>
   );
 }
 
@@ -96,7 +96,7 @@ const NIVEAUX_SOINS: Record<string, string> = {
 
 export function RubriqueVolontes({ v }: { v: Volontes | null }) {
   return (
-    <Rubrique nom="volontes" titre="Volontés">
+    <Carte nom="volontes" titre="Volontés">
       {!v ? <p>Aucune volonté inscrite.</p> : (
         <dl className="resume">
           <div>
@@ -107,6 +107,6 @@ export function RubriqueVolontes({ v }: { v: Volontes | null }) {
           <div><dt>Don d'organes</dt><dd>{v.donOrganes === null ? 'Non précisé' : v.donOrganes ? 'Consentement inscrit' : 'Refus inscrit'}</dd></div>
         </dl>
       )}
-    </Rubrique>
+    </Carte>
   );
 }

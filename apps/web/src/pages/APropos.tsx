@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom';
-import { Corps, TetePage, useTitre } from '../composants/Gabarit';
+import { EntetePage, Page, useTitre } from '../composants/Gabarit';
 import type { NomIllustration } from '../composants/Illustration';
 
 const PAGES: Record<string, { titre: string; illustration: NomIllustration; chapeau: string; contenu: { titre: string; texte: string[] }[] }> = {
@@ -51,16 +51,16 @@ export default function APropos() {
   const p = PAGES[page] ?? PAGES.accessibilite!;
   useTitre(p.titre, 'Santé Québec');
   return (
-    <main id="contenu" tabIndex={-1}>
-      <TetePage illustration={p.illustration} fil={[{ vers: '/', texte: 'Accueil' }]} titre={p.titre} chapeau={p.chapeau} />
-      <Corps etroit>
+    <Page etroite>
+      <EntetePage illustration={p.illustration} fil={[{ vers: '/', texte: 'Accueil' }]} titre={p.titre} chapeau={p.chapeau} />
+      <div className="carte" style={{ gap: 26 }}>
         {p.contenu.map((s) => (
           <section key={s.titre} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <h2>{s.titre}</h2>
             {s.texte.length > 1 ? <ul style={{ margin: 0, paddingLeft: 22, display: 'flex', flexDirection: 'column', gap: 8 }}>{s.texte.map((t) => <li key={t}>{t}</li>)}</ul> : <p>{s.texte[0]}</p>}
           </section>
         ))}
-      </Corps>
-    </main>
+      </div>
+    </Page>
   );
 }
