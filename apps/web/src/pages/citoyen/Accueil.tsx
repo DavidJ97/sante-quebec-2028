@@ -1,63 +1,92 @@
+import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { formaterNumero } from '@sante/noyau';
 import { api, type RendezVous, type Reponse } from '../../api';
-import { Icone, type NomIcone } from '../../composants/Icone';
+import { Corps, TetePage, useTitre } from '../../composants/Gabarit';
+import { Illustration, TEINTES, type NomIllustration } from '../../composants/Illustration';
 import { useRequete } from '../../composants/Requete';
 import { heure, jour, majuscule } from '../../format';
-import { useCible } from './commun';
+import { SERVICE, useCible } from './commun';
 
-function Tuile({ vers, icone, titre, sous, principale }: { vers: string; icone: NomIcone; titre: string; sous: string; principale?: boolean }) {
+interface Entree { vers: string; nom: NomIllustration; titre: string; description: string }
+
+function MenuServices({ entrees, etiquette }: { entrees: Entree[]; etiquette: string }) {
   return (
-    <Link to={vers} className={`tuile ${principale ? 'principale' : ''}`}>
-      <Icone nom={icone} className="icone" taille={44} />
-      <span><span className="titre">{titre}</span><span className="sous">{sous}</span></span>
-      <Icone nom="chevron" className="chevron" />
-    </Link>
+    <nav aria-label={etiquette}>
+      <ul className="menu-services">
+        {entrees.map((e) => (
+          <li key={e.vers} style={{ '--teinte': TEINTES[e.nom] } as CSSProperties}>
+            <Link to={e.vers}>
+              <span className="pictogramme"><Illustration nom={e.nom} taille={34} /></span>
+              <span><span className="titre">{e.titre}</span><span className="description">{e.description}</span></span>
+              <svg className="fleche" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }
 
 export default function Accueil() {
   const { moi } = useCible();
+  useTitre('Accueil', SERVICE);
   const [rdv] = useRequete(() => api.get<Reponse<RendezVous[]>>(`/personnes/${moi.numero}/donnees/rendezvous`), [moi.numero]);
   const liste = rdv.etat === 'pret' ? rdv.valeur.valeur : [];
-  const aConfirmer = liste.filter((r) => r.statut === 'propose').length;
+  const aConfirmer = liste.filter((r) => r.statut === 'propose');
   const prochain = liste.find((r) => r.statut === 'confirme');
 
   return (
-    <main className="page etroite" id="contenu">
-      <div className="pile" style={{ gap: 4 }}>
-        <h1>Bonjour {moi.prenom}</h1>
-        <p className="secondaire chiffres">{formaterNumero(moi.numero)}</p>
-      </div>
+    <main id="contenu" tabIndex={-1}>
+      <TetePage illustration="accueil" titre={`Bonjour, ${moi.prenom}`}
+        chapeau={<>Numéro QC <span className="chiffres">{formaterNumero(moi.numero)}</span></>} />
+      <Corps>
+        {aConfirmer.length > 0 && (
+          <section className="bandeau" aria-labelledby="a-faire">
+            <h2 className="bandeau-titre" id="a-faire">À faire</h2>
+            <div className="bandeau-corps">
+              <p className="accroche">{aConfirmer.length === 1 ? 'Un rendez-vous attend votre réponse' : `${aConfirmer.length} rendez-vous attendent votre réponse`}</p>
+              <p>{aConfirmer[0]!.objet}, {jour(aConfirmer[0]!.debut)} à {heure(aConfirmer[0]!.debut)}.</p>
+              <p><Link to="/rendez-vous">Confirmer ou changer la date</Link></p>
+            </div>
+          </section>
+        )}
 
-      {prochain && (
-        <section className="carte" aria-labelledby="prochain">
-          <p className="sur-titre" id="prochain">Prochain rendez-vous</p>
-          <p style={{ fontSize: '1.3rem', fontWeight: 700 }}>{prochain.objet}</p>
-          <p>{majuscule(jour(prochain.debut))}, {heure(prochain.debut)}</p>
-          <p className="secondaire">{prochain.lieu}</p>
+        {prochain && (
+          <section aria-labelledby="prochain" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <h2 id="prochain">Votre prochain rendez-vous</h2>
+            <p style={{ fontSize: '1.25rem' }}><strong>{prochain.objet}</strong></p>
+            <p>{majuscule(jour(prochain.debut))}, {heure(prochain.debut)} · {prochain.lieu}</p>
+          </section>
+        )}
+
+        <section aria-labelledby="mon-dossier" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <h2 id="mon-dossier">Mon dossier</h2>
+          <MenuServices etiquette="Mon dossier" entrees={[
+            { vers: '/rendez-vous', nom: 'rendezvous', titre: 'Rendez-vous', description: 'Confirmer, changer une date' },
+            { vers: '/medicaments', nom: 'medicaments', titre: 'Médicaments', description: 'Quoi prendre et à quel moment' },
+            { vers: '/vaccins', nom: 'vaccins', titre: 'Carnet de vaccination', description: 'Toutes vos doses, au même endroit' },
+            { vers: '/resume', nom: 'maladies', titre: 'Résumé de santé', description: 'Allergies, maladies, volontés' },
+          ]} />
         </section>
-      )}
 
-      <nav className="pile" aria-label="Mon dossier">
-        <Tuile vers="/rendez-vous" icone="calendrier" titre="Mes rendez-vous"
-          sous={rdv.etat !== 'pret' ? ' ' : aConfirmer ? `${aConfirmer} à confirmer` : liste.length ? 'Tout est confirmé' : 'Aucun rendez-vous prévu'} />
-        <Tuile vers="/medicaments" icone="pilule" titre="Mes médicaments" sous="Quoi prendre et quand" />
-        <Tuile vers="/vaccins" icone="seringue" titre="Mon carnet de vaccination" sous="Toutes mes doses" />
-        <Tuile vers="/aide" icone="telephone" titre="Besoin d'aide" sous="Parler à une infirmière" principale />
-      </nav>
+        {moi.pourQui.length > 0 && (
+          <section aria-labelledby="proches" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <h2 id="proches">Personnes dont vous vous occupez</h2>
+            <MenuServices etiquette="Personnes dont vous vous occupez"
+              entrees={moi.pourQui.map((p) => ({ vers: `/pour/${p.numero}`, nom: 'proches' as const, titre: p.nom, description: p.lien }))} />
+          </section>
+        )}
 
-      {moi.pourQui.length > 0 && (
-        <section className="pile" aria-labelledby="soins-proches">
-          <h2 id="soins-proches">Je m'occupe de</h2>
-          {moi.pourQui.map((p) => <Tuile key={p.numero} vers={`/pour/${p.numero}`} icone="main" titre={p.nom} sous={p.lien} />)}
+        <section aria-labelledby="autres" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <h2 id="autres">Confidentialité et famille</h2>
+          <MenuServices etiquette="Confidentialité et famille" entrees={[
+            { vers: '/qui-a-vu', nom: 'journal', titre: 'Qui a consulté mon dossier', description: 'Chaque consultation est inscrite' },
+            { vers: '/famille', nom: 'famille', titre: 'Ma famille', description: 'Les liens inscrits à l\'État civil' },
+            { vers: '/aide', nom: 'aide', titre: 'Obtenir de l\'aide', description: 'Parler à une infirmière, jour et nuit' },
+          ]} />
         </section>
-      )}
-
-      <nav className="pile" aria-label="Autres">
-        <Tuile vers="/qui-a-vu" icone="oeil" titre="Qui a consulté mon dossier" sous="Chaque consultation est inscrite" />
-        <Tuile vers="/famille" icone="famille" titre="Ma famille" sous="Les liens inscrits à l'État civil" />
-      </nav>
+      </Corps>
     </main>
   );
 }

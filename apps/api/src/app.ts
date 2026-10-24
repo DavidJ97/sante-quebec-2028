@@ -14,6 +14,8 @@ import { autoriser, avecAcces, evaluerSansJournal } from './passerelle.js';
 import { FICHE_URGENCE, LECTEURS } from './dossier.js';
 import { inscrire, verifier } from './journal.js';
 import * as registre from './registre.js';
+import { migrer } from './db.js';
+import { semer } from './seed.js';
 
 export interface Options {
   base: Base;
@@ -28,12 +30,12 @@ type Corps = Record<string, unknown>;
 const corps = (req: FastifyRequest): Corps => (req.body && typeof req.body === 'object' ? (req.body as Corps) : {});
 function texte(c: Corps, cle: string, { min = 1, max = 500 } = {}): string {
   const v = c[cle];
-  if (typeof v !== 'string' || v.trim().length < min || v.length > max) throw invalide(`Champ « ${cle} » manquant ou invalide`);
+  if (typeof v !== 'string' || v.trim().length < min || v.length > max) throw invalide(`Champ « ${cle} » manquant ou invalide`);
   return v.trim();
 }
 function date(c: Corps, cle: string): string {
   const v = texte(c, cle, { max: 10 });
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || Number.isNaN(Date.parse(v))) throw invalide(`Date « ${cle} » invalide (AAAA-MM-JJ)`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || Number.isNaN(Date.parse(v))) throw invalide(`Date « ${cle} » invalide (AAAA-MM-JJ)`);
   return v;
 }
 function numeroQC(v: unknown): string {
@@ -44,7 +46,7 @@ function numeroQC(v: unknown): string {
 }
 const sexe = (c: Corps): 'F' | 'M' | 'X' => {
   const v = c.sexe;
-  if (v !== 'F' && v !== 'M' && v !== 'X') throw invalide('Sexe à la naissance : F, M ou X');
+  if (v !== 'F' && v !== 'M' && v !== 'X') throw invalide('Sexe à la naissance : F, M ou X');
   return v;
 };
 
@@ -199,7 +201,7 @@ export function construireApp(o: Options) {
     for (const m of mandats) {
       const n = await registre.numeroDe(base, m.cle);
       if (pourQui.some((x) => x.numero === n.numero)) continue;
-      pourQui.push({ numero: n.numero, nom: nomComplet(m), lien: `Procuration « ${NIVEAUX_PROCURATION[m.niveau].nom} »` });
+      pourQui.push({ numero: n.numero, nom: nomComplet(m), lien: `Procuration « ${NIVEAUX_PROCURATION[m.niveau].nom} »` });
     }
     return rep.send({ type: 'citoyen', numero: moi.numero, prenom: p!.prenom, nom: p!.nom, modeSimplifie: c?.mode_simplifie ?? false, pourQui });
   });
@@ -362,7 +364,7 @@ export function construireApp(o: Options) {
     return avecAcces(base, d, r.numero, 'identite', 'lire', async (tx, a) => ({
       numero: a.numero.numero, numeroAffiche: formaterNumero(a.numero.numero), statut: LIBELLES_STATUT[a.numero.statut],
       identite: await LECTEURS.identite!(tx, a.numero.personneCle),
-    }), `Recherche : ${q.length > 4 ? '…' + q.slice(-4) : q}`);
+    }), `Recherche : ${q.length > 4 ? '…' + q.slice(-4) : q}`);
   });
 
   app.get<{ Params: { numero: string } }>('/api/personnes/:numero/fiche-urgence', async (req) => {
@@ -477,7 +479,7 @@ export function construireApp(o: Options) {
   app.post<{ Params: { id: string } }>('/api/exploitation/acces-urgence/:id/revue', async (req, rep) => {
     const d = exigerEmploye(await demandeur(req), 'admintech');
     const decision = corps(req).decision;
-    if (decision !== 'justifie' && decision !== 'enquete') throw invalide('Décision : justifie ou enquete');
+    if (decision !== 'justifie' && decision !== 'enquete') throw invalide('Décision : justifie ou enquete');
     if (!/^\d+$/.test(req.params.id)) throw introuvable();
     const r = await base.requete(
       `update lien_soins set revu_le = now(), revu_par = $2, revue_decision = $3 where id = $1 and urgence and revu_le is null returning id`,
@@ -487,6 +489,16 @@ export function construireApp(o: Options) {
   });
 
   app.get('/api/sante', async () => ({ ok: true }));
+
+  // Développement et tests seulement : repartir d'une base neuve. N'existe pas en production.
+  if (o.developpement) {
+    app.post('/api/developpement/reinitialiser', async (_req, rep) => {
+      await base.script('drop schema public cascade; create schema public;');
+      await migrer(base);
+      await semer(base);
+      return rep.status(204).send();
+    });
+  }
 
   return app;
 }

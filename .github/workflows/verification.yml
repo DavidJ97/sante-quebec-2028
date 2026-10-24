@@ -16,3 +16,8 @@ jobs:
       - run: npm run verifier-types
       - run: npm test
       - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --project=mobile --project=ordinateur
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: { name: rapport-playwright, path: test-results, retention-days: 7 }

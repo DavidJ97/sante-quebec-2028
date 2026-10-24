@@ -9,6 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource/open-sans": "^5.1.0",
+    "@fontsource/roboto": "^5.1.0",
+    "@fontsource/roboto-mono": "^5.1.0",
     "@sante/noyau": "*",
     "react": "18.3.1",
     "react-dom": "18.3.1",

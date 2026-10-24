@@ -7,7 +7,7 @@ export const jourAnnee = (iso: string) =>
   new Date(iso.length === 10 ? `${iso}T12:00:00` : iso).toLocaleDateString('fr-CA', { day: 'numeric', month: 'long', year: 'numeric', timeZone: FUSEAU });
 
 export const heure = (iso: string) =>
-  new Date(iso).toLocaleTimeString('fr-CA', { hour: 'numeric', minute: '2-digit', timeZone: FUSEAU }).replace(':', ' h ').replace(' h 00', ' h');
+  new Date(iso).toLocaleTimeString('fr-CA', { hour: 'numeric', minute: '2-digit', timeZone: FUSEAU }).replace(/\s*(h|:)\s*/, '\u00a0h\u00a0').replace(/\u00a0h\u00a000$/, '\u00a0h');
 
 export const majuscule = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -23,3 +23,15 @@ export function age(dateNaissance: string | null): number | null {
 export const MOMENTS = { matin: 'Le matin', midi: 'Le midi', soir: 'Le soir', coucher: 'Au coucher' } as const;
 export const GRAVITE = { grave: 'Grave', moderee: 'Modérée', legere: 'Légère' } as const;
 export const CERTITUDE = { confirmee: 'confirmée', soupconnee: 'soupçonnée' } as const;
+
+export const dateHeure = (iso: string) => `${jourAnnee(iso)} à ${heure(iso)}`;
+
+export const moisCourt = (iso: string) =>
+  new Date(iso).toLocaleDateString('fr-CA', { month: 'short', timeZone: 'America/Toronto' }).replace('.', '');
+export const numeroJour = (iso: string) =>
+  new Date(iso).toLocaleDateString('fr-CA', { day: 'numeric', timeZone: 'America/Toronto' });
+export const jourSemaine = (iso: string) =>
+  new Date(iso).toLocaleDateString('fr-CA', { weekday: 'long', timeZone: 'America/Toronto' });
+
+/** Date de naissance non ambiguë, comme sur un bracelet d'identification : « 2 mai 1939 ». */
+export const naissance = (iso: string) => jourAnnee(iso);

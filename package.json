@@ -4,19 +4,28 @@
   "private": true,
   "type": "module",
   "description": "Application Santé Québec : identifiant QC, registre des personnes, passerelle d'accès, journal inviolable, espaces citoyen et clinique.",
-  "workspaces": ["packages/*", "apps/*"],
-  "engines": { "node": ">=22" },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "npm run dev -w apps/api & npm run dev -w apps/web",
     "test": "npm test -w packages/noyau && npm test -w apps/api",
     "verifier-types": "tsc -p packages/noyau && tsc -p apps/api && tsc -p apps/web",
     "build": "npm run build -w apps/web",
-    "seed": "npm run seed -w apps/api"
+    "seed": "npm run seed -w apps/api",
+    "e2e": "playwright test --project=mobile --project=ordinateur",
+    "captures": "playwright test --project=captures"
   },
   "devDependencies": {
     "typescript": "5.7.2",
     "vitest": "2.1.8",
     "tsx": "4.19.2",
-    "@types/node": "22.10.2"
+    "@types/node": "22.10.2",
+    "@playwright/test": "1.63.0",
+    "@axe-core/playwright": "4.10.1"
   }
 }

@@ -27,7 +27,7 @@ export function chiffreControle(chiffres: string): number {
   let interim = 0;
   for (const c of chiffres) {
     const d = c.charCodeAt(0) - 48;
-    if (d < 0 || d > 9) throw new RangeError(`Caractère non numérique : ${c}`);
+    if (d < 0 || d > 9) throw new RangeError(`Caractère non numérique : ${c}`);
     interim = DAMM[interim]![d]!;
   }
   return interim;

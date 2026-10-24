@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ErreurApi } from '../api';
-import { Icone } from './Icone';
 
 export type Etat<T> =
   | { etat: 'chargement' }
@@ -31,8 +30,8 @@ export function useRequete<T>(charger: () => Promise<T>, deps: unknown[]): [Etat
 export function Charge<T>({ etat, lignes = 3, children, recharger }: { etat: Etat<T>; lignes?: number; children: (v: T) => ReactNode; recharger?: () => void }) {
   if (etat.etat === 'chargement') {
     return (
-      <div className="pile" aria-busy="true" aria-label="Chargement">
-        {Array.from({ length: lignes }, (_, i) => <div key={i} className="squelette" style={{ width: `${90 - i * 15}%` }} />)}
+      <div role="status" aria-label="Chargement en cours" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {Array.from({ length: lignes }, (_, i) => <div key={i} className="squelette" style={{ width: `${88 - i * 14}%` }} />)}
       </div>
     );
   }
@@ -41,15 +40,19 @@ export function Charge<T>({ etat, lignes = 3, children, recharger }: { etat: Eta
 }
 
 export function MessageErreur({ erreur, recharger }: { erreur: ErreurApi; recharger?: (() => void) | undefined }) {
-  const refus = erreur.statut === 403;
+  if (erreur.statut === 403) {
+    return (
+      <div className="encart" role="alert">
+        <p><strong>Vous n'avez pas accès à cette information.</strong></p>
+        <p>{erreur.message}.</p>
+      </div>
+    );
+  }
   return (
-    <div className={`carte ${refus ? '' : 'attention'}`} role="alert">
-      <p style={{ display: 'flex', gap: 8, fontWeight: 700 }}>
-        <Icone nom={refus ? 'bouclier' : 'alerte'} />
-        {refus ? 'Vous n\'avez pas accès à cette information' : 'Impossible d\'afficher cette information'}
-      </p>
+    <div className="resume-erreurs" role="alert">
+      <h2>Ce contenu n'a pas pu être affiché</h2>
       <p>{erreur.message}</p>
-      {recharger && !refus && <button type="button" className="bouton discret" style={{ alignSelf: 'flex-start' }} onClick={recharger}>Réessayer</button>}
+      {recharger && <p><button type="button" className="bouton-lien" onClick={recharger}>Réessayer</button></p>}
     </div>
   );
 }

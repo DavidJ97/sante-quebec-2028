@@ -3,3 +3,5 @@ dist/
 .donnees/
 *.log
 .env
+test-results/
+playwright-report/

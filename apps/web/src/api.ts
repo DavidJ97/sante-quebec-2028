@@ -56,7 +56,9 @@ export interface Reponse<T> { donnee: string; libelle: string; raison: string; v
 
 export interface RendezVous { id: string; objet: string; lieu: string; adresse: string; debut: string; statut: 'propose' | 'confirme'; note: string | null }
 export interface Medicament { id: string; nom: string; posologie: string; moments: ('matin' | 'midi' | 'soir' | 'coucher')[]; miseEnGarde: string | null; source: string }
-export interface Allergie { id: string; substance: string; reaction: string; gravite: 'grave' | 'moderee' | 'legere'; certitude: 'confirmee' | 'soupconnee' }
+export interface Allergie { id: string; substance: string; reaction: string; gravite: 'grave' | 'moderee' | 'legere'; certitude: 'confirmee' | 'soupconnee'; inscriteLe: string }
+/** « aucune_connue » exige un constat signé ; une liste vide sans constat est « non_documente ». */
+export interface Allergies { etat: 'presentes' | 'aucune_connue' | 'non_documente'; elements: Allergie[]; verification: { le: string; par: string } | null }
 export interface Adaptation { id: string; titre: string; detail: string }
 export interface Maladie { id: string; libelle: string; dispositif: boolean; depuis: string | null; note: string | null }
 export interface Volontes { niveauSoins: 'A' | 'B' | 'C' | 'D' | null; directives: boolean; donOrganes: boolean | null }
@@ -66,8 +68,10 @@ export interface Droit { donnee: string; libelle: string; permis: boolean; raiso
 export interface EntreeQuiAVu { no: number; le: string; donnee: string; action: string; urgence: boolean; qui: string; precision: string; signale: boolean }
 export interface GroupeFamille { groupe: string; libelle: string; personnes: { numero: string; nom: string; statut: string; age: number | null; deces: string | null }[] }
 export interface FicheUrgence {
-  acces: { raison: string; urgence: boolean };
-  allergies: Allergie[]; medicaments: Medicament[]; adaptation: Adaptation[]; maladies: Maladie[]; volontes: Volontes | null;
+  acces: { raison: string; urgence: boolean; expireLe: string | null };
+  allergies: Allergies; medicaments: Medicament[]; adaptation: Adaptation[]; maladies: Maladie[]; volontes: Volontes | null;
   proches: { nom: string; telephone: string | null; niveau: number; fin: string | null }[];
 }
 export interface ResultatRecherche { numero: string; numeroAffiche: string; statut: string; identite: Identite }
+export interface Coordonnees { adresse: string | null; ville: string | null; codePostal: string | null; telephone: string | null; courriel: string | null; langue: string; modeSimplifie: boolean }
+export interface MotifUrgence { code: string; libelle: string }

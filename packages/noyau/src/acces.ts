@@ -127,7 +127,7 @@ export function decider(c: Contexte): Verdict {
     if (c.donnee === 'identite' && c.action === 'lire' && c.liensSoins.length === 0) return oui('Identification du patient');
     const lien = c.liensSoins.find((l) => !l.urgence) ?? c.liensSoins[0];
     if (!lien) return non('Aucun lien de soins actif avec cette personne');
-    return lien.urgence ? oui('Accès d\'urgence, revu après coup', true) : oui(`Lien de soins : ${lien.contexte}`);
+    return lien.urgence ? oui('Accès d\'urgence, revu après coup', true) : oui(`Lien de soins : ${lien.contexte}`);
   }
 
   // Citoyen
@@ -149,7 +149,7 @@ export function decider(c: Contexte): Verdict {
 
   if (sujet.parents.includes(demandeur.personneCle) && age !== null && age < AGE_MAJORITE && sujet.statut !== 'decede') {
     if (age < AGE_SOINS_CONFIDENTIELS) return oui('Parent d\'un enfant de moins de 14 ans');
-    if ('confidentielleAdo' in def && def.confidentielleAdo) return non('Soins confidentiels : dès 14 ans, l\'adolescent décide');
+    if ('confidentielleAdo' in def && def.confidentielleAdo) return non('Soins confidentiels : dès 14 ans, l\'adolescent décide');
     if (c.action === 'decider') return non('Dès 14 ans, l\'adolescent consent lui-même à ses soins');
     return oui('Parent d\'un adolescent de 14 à 17 ans');
   }
@@ -158,9 +158,9 @@ export function decider(c: Contexte): Verdict {
     if (sujet.statut === 'decede') return non('La procuration a pris fin au décès');
     const meilleure = Math.max(...c.procurations.map((p) => p.niveau)) as NiveauProcuration;
     const n = NIVEAUX_PROCURATION[meilleure];
-    if (n.donnees !== '*' && !n.donnees.includes(c.donnee)) return non(`Procuration « ${n.nom} » : cette donnée n'est pas incluse`);
-    if (!n.actions.includes(c.action)) return non(`Procuration « ${n.nom} » : action non permise`);
-    return oui(`Procuration « ${n.nom} »`);
+    if (n.donnees !== '*' && !n.donnees.includes(c.donnee)) return non(`Procuration « ${n.nom} » : cette donnée n'est pas incluse`);
+    if (!n.actions.includes(c.action)) return non(`Procuration « ${n.nom} » : action non permise`);
+    return oui(`Procuration « ${n.nom} »`);
   }
 
   return non('Aucun lien autorisé avec cette personne');

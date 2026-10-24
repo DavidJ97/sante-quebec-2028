@@ -143,7 +143,7 @@ async function coordonnees(tx: Executeur, cle: string, c: Coord) {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const { ouvrirBase, migrer } = await import('./db.js');
   if (process.env.DATABASE_URL) throw new Error('Le semis ne s\'exécute que sur la base de développement locale');
-  await rm(new URL('../../../.donnees/pglite', import.meta.url), { recursive: true, force: true });
+  await rm(process.env.SANTE_DONNEES ?? new URL('../../../.donnees/pglite', import.meta.url), { recursive: true, force: true });
   const base = ouvrirBase();
   await migrer(base);
   const n = await semer(base);

@@ -89,7 +89,7 @@ describe('espace citoyen', () => {
   it('Nadia organise pour sa mère, sans voir ses médicaments', async () => {
     const j = await connecterCitoyen(N.nadia!);
     const moi = (await get(j, '/api/moi')).json();
-    expect(moi.pourQui).toContainEqual({ numero: N.gisele, nom: 'Gisèle Tremblay', lien: 'Procuration « Organiser »' });
+    expect(moi.pourQui).toContainEqual({ numero: N.gisele, nom: 'Gisèle Tremblay', lien: 'Procuration «\u00a0Organiser\u00a0»' });
 
     const rdv = await get(j, `/api/personnes/${N.gisele}/donnees/rendezvous`);
     expect(rdv.statusCode).toBe(200);
@@ -177,7 +177,7 @@ describe('personnel clinique', () => {
   it('le médecin de famille a accès sans urgence', async () => {
     const j = await connecterPersonnel('proy');
     const fiche = (await get(j, `/api/personnes/${N.gisele}/fiche-urgence`)).json();
-    expect(fiche.acces).toEqual({ raison: 'Lien de soins : Médecin de famille', urgence: false, expireLe: null });
+    expect(fiche.acces).toEqual({ raison: 'Lien de soins\u00a0: Médecin de famille', urgence: false, expireLe: null });
   });
 
   it('Québec Tech voit l\'accès d\'urgence à revoir, pas le contenu', async () => {
