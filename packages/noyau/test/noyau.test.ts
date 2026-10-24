@@ -129,6 +129,8 @@ describe('règles d\'accès', () => {
     expect(decider(ctx({ demandeur: tech, donnee: 'allergies' })).permis).toBe(false);
     expect(decider(ctx({ demandeur: tech, donnee: 'journal' })).permis).toBe(true);
     expect(decider(ctx({ demandeur: dre, donnee: 'allergies' })).permis).toBe(false);
+    expect(decider(ctx({ demandeur: dre, donnee: 'identite' })).raison).toBe('Identification du patient');
+    expect(decider(ctx({ demandeur: dre, donnee: 'identite', action: 'ecrire' })).permis).toBe(false);
     expect(decider(ctx({ demandeur: dre, donnee: 'allergies', liensSoins: [{ contexte: 'Médecin de famille', urgence: false }] }))).toMatchObject({ permis: true, urgence: false });
     expect(decider(ctx({ demandeur: dre, donnee: 'allergies', liensSoins: [{ contexte: 'Urgence', urgence: true }] }))).toMatchObject({ permis: true, urgence: true });
   });

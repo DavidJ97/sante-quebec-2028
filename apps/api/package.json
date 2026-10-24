@@ -1,0 +1,22 @@
+{
+  "name": "@sante/api",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "SANTE_MODE=developpement tsx watch src/serveur.ts",
+    "start": "tsx src/serveur.ts",
+    "seed": "SANTE_MODE=developpement tsx src/seed.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@sante/noyau": "*",
+    "@electric-sql/pglite": "0.2.15",
+    "@fastify/cookie": "11.0.2",
+    "fastify": "5.2.1",
+    "pg": "8.13.1"
+  },
+  "devDependencies": {
+    "@types/pg": "8.11.10"
+  }
+}

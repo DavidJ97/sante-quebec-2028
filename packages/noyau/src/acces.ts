@@ -123,6 +123,8 @@ export function decider(c: Contexte): Verdict {
     // Porte clinique
     if (def.nature === 'technique') return non('Réservé à l\'équipe technique');
     if (c.action === 'decider') return non('Action réservée à la personne ou à son représentant');
+    // Identifier la personne devant soi est permis à tout soignant ; le reste exige un lien de soins.
+    if (c.donnee === 'identite' && c.action === 'lire' && c.liensSoins.length === 0) return oui('Identification du patient');
     const lien = c.liensSoins.find((l) => !l.urgence) ?? c.liensSoins[0];
     if (!lien) return non('Aucun lien de soins actif avec cette personne');
     return lien.urgence ? oui('Accès d\'urgence, revu après coup', true) : oui(`Lien de soins : ${lien.contexte}`);
