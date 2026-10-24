@@ -9,7 +9,8 @@ export const LECTEURS: Partial<Record<Donnee, Lecteur>> = {
   identite: async (ex, cle) => {
     const [p] = await ex.requete(
       `select prenom, nom, date_naissance::text as "dateNaissance", date_prevue::text as "datePrevue",
-              sexe_naissance as "sexe", lieu_naissance as "lieuNaissance", date_deces::text as "dateDeces"
+              sexe_naissance as "sexe", lieu_naissance as "lieuNaissance", date_deces::text as "dateDeces",
+              (select prise_le::text from photo where personne_cle = $1 order by prise_le desc limit 1) as "photoPriseLe"
          from personne where cle = $1`, [cle]);
     return p ?? null;
   },

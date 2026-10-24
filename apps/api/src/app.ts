@@ -23,6 +23,8 @@ export interface Options {
   /** En développement, le code de connexion est renvoyé dans la réponse. Jamais en production. */
   developpement?: boolean;
   journaliser?: boolean;
+  /** Codes de connexion permis par personne sur 5 minutes. */
+  limiteCodes?: number;
 }
 
 // ---------- petits outils de validation ----------
@@ -94,7 +96,7 @@ export function construireApp(o: Options) {
   async function limiterCodes(tx: Executeur, type: string, id: string) {
     const [{ n }] = (await tx.requete<{ n: number }>(
       `select count(*)::int as n from code_connexion where cible_type = $1 and cible_id = $2 and expire_le > now() - interval '5 minutes'`, [type, id])) as [{ n: number }];
-    if (n >= 3) throw new ErreurHttp(429, 'trop_de_demandes', 'Trop de codes demandés. Attendez quelques minutes.');
+    if (n >= (o.limiteCodes ?? 3)) throw new ErreurHttp(429, 'trop_de_demandes', 'Trop de codes demandés. Attendez quelques minutes.');
   }
 
   // ================= Connexion =================
@@ -203,7 +205,16 @@ export function construireApp(o: Options) {
       if (pourQui.some((x) => x.numero === n.numero)) continue;
       pourQui.push({ numero: n.numero, nom: nomComplet(m), lien: `Procuration « ${NIVEAUX_PROCURATION[m.niveau].nom} »` });
     }
-    return rep.send({ type: 'citoyen', numero: moi.numero, prenom: p!.prenom, nom: p!.nom, modeSimplifie: c?.mode_simplifie ?? false, pourQui });
+    // Personnes de confiance : qui agit pour moi
+    const mandataires = await base.requete<{ nom: string; niveau: NiveauProcuration; fin: string | null; debut: string }>(
+      `select p.prenom || ' ' || p.nom as nom, pr.niveau, pr.fin::text, pr.debut::text from procuration pr join personne p on p.cle = pr.mandataire_cle
+        where pr.mandant_cle = $1 and pr.revoquee_le is null and (pr.fin is null or pr.fin >= current_date) order by pr.niveau desc`, [cle]);
+    const [ph] = await base.requete<{ prise_le: string }>('select prise_le::text from photo where personne_cle = $1 order by prise_le desc limit 1', [cle]);
+    return rep.send({
+      type: 'citoyen', numero: moi.numero, prenom: p!.prenom, nom: p!.nom, dateNaissance: p!.date_naissance,
+      modeSimplifie: c?.mode_simplifie ?? false, photoPriseLe: ph?.prise_le ?? null, pourQui,
+      mandataires: mandataires.map((m) => ({ nom: m.nom, niveau: m.niveau, niveauNom: NIVEAUX_PROCURATION[m.niveau].nom, debut: m.debut, fin: m.fin })),
+    });
   });
 
   // ================= Dossier : une donnée à la fois, toujours par la passerelle =================
@@ -287,6 +298,7 @@ export function construireApp(o: Options) {
       return lignes.map((l) => ({
         no: Number(l.no), le: l.le, donnee: DONNEES[l.donnee as keyof typeof DONNEES]?.libelle ?? l.donnee, action: l.action, urgence: l.urgence,
         qui: l.demandeur_type === 'citoyen' ? nomComplet(l) : `${l.emp_nom}`,
+        employeId: l.demandeur_type === 'citoyen' ? null : l.demandeur_id,
         precision: l.demandeur_type === 'citoyen' ? l.raison : `${l.emp_role} · ${l.emp_etab}`, signale: l.signale,
       }));
     });
@@ -351,6 +363,30 @@ export function construireApp(o: Options) {
       await tx.requete(`update rendez_vous set debut = $2, statut = 'confirme', modifie_le = now() where id = $1`, [req.params.id, debut]);
     }, 'Déplacement du rendez-vous');
     return rep.status(204).send();
+  });
+
+  // ================= Photos =================
+  // Photo d'une personne : c'est une donnée d'identité, servie par la passerelle et inscrite au journal.
+  app.get<{ Params: { numero: string } }>('/api/personnes/:numero/photo', async (req, rep) => {
+    const d = await demandeur(req);
+    const numero = numeroQC(req.params.numero);
+    const ph = await avecAcces(base, d, numero, 'identite', 'lire', async (tx, a) => {
+      const [x] = await tx.requete<{ image: Uint8Array; type_mime: string }>(
+        'select image, type_mime from photo where personne_cle = $1 order by prise_le desc limit 1', [a.numero.personneCle]);
+      return x ?? null;
+    }, 'Photo');
+    if (!ph) throw introuvable('Aucune photo');
+    return rep.header('content-type', ph.type_mime).header('cache-control', 'private, no-store').send(Buffer.from(ph.image));
+  });
+
+  // Photo d'un membre du personnel : visible par toute personne connectée (on sait qui nous soigne ou qui a consulté).
+  app.get<{ Params: { id: string } }>('/api/personnel/:id/photo', async (req, rep) => {
+    await demandeur(req);
+    if (!/^[a-z0-9._-]{1,40}$/.test(req.params.id)) throw introuvable();
+    const [ph] = await base.requete<{ image: Uint8Array; type_mime: string }>(
+      'select image, type_mime from photo where employe_id = $1 order by prise_le desc limit 1', [req.params.id]);
+    if (!ph) throw introuvable('Aucune photo');
+    return rep.header('content-type', ph.type_mime).header('cache-control', 'private, max-age=3600').send(Buffer.from(ph.image));
   });
 
   // ================= Personnel clinique =================

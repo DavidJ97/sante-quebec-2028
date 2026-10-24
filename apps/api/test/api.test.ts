@@ -12,7 +12,7 @@ beforeAll(async () => {
   base = basePGlite();
   await migrer(base);
   N = await semer(base);
-  app = construireApp({ base, developpement: true, messagerie: { envoyerCode: async () => {} } });
+  app = construireApp({ base, developpement: true, limiteCodes: 1000, messagerie: { envoyerCode: async () => {} } });
   await app.ready();
 }, 60_000);
 
@@ -53,6 +53,14 @@ describe('connexion', () => {
     const inconnu = await app.inject({ method: 'POST', url: '/api/connexion/citoyen/code', payload: { numero: 'QC 9999 9999 991' } });
     expect(inconnu.statusCode === 202 || inconnu.statusCode === 400).toBe(true);
     if (inconnu.statusCode === 202) expect(inconnu.json().codeDeveloppement).toBeUndefined();
+  });
+
+  it('limite le nombre de codes demandés', async () => {
+    const stricte = construireApp({ base, developpement: true, messagerie: { envoyerCode: async () => {} } });
+    const codes = [];
+    for (let i = 0; i < 4; i++) codes.push((await stricte.inject({ method: 'POST', url: '/api/connexion/citoyen/code', payload: { numero: N.marc } })).statusCode);
+    expect(codes).toEqual([202, 202, 202, 429]);
+    await stricte.close();
   });
 
   it('bloque un code après 5 essais ratés', async () => {
@@ -238,6 +246,42 @@ describe('sécurité clinique', () => {
     expect(droits.find((d) => d.donnee === 'medicaments')!.permis).toBe(false);
     const apres = (await base.requete<{ n: number }>('select count(*)::int as n from journal_acces'))[0]!.n;
     expect(apres).toBe(avant);
+  });
+});
+
+describe('photos', () => {
+  const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+
+  it('la photo est une donnée d\'identité : servie par la passerelle et inscrite au journal', async () => {
+    const [{ cle }] = (await base.requete<{ cle: string }>('select personne_cle as cle from numero_qc where numero = $1', [N.gisele])) as [{ cle: string }];
+    await base.requete(`insert into photo (personne_cle, image, type_mime, prise_le, source) values ($1, $2, 'image/png', '2025-03-04', 'point_de_service')`, [cle, PNG]);
+
+    const g = await connecterCitoyen(N.gisele!);
+    const r = await get(g, `/api/personnes/${N.gisele}/photo`);
+    expect(r.statusCode).toBe(200);
+    expect(r.headers['content-type']).toBe('image/png');
+    expect(r.headers['cache-control']).toContain('no-store');
+    expect(Buffer.compare(r.rawPayload, PNG)).toBe(0);
+    expect((await get(g, '/api/moi')).json().photoPriseLe).toBe('2025-03-04');
+
+    const k = await connecterCitoyen(N.kevin!);
+    expect((await get(k, `/api/personnes/${N.gisele}/photo`)).statusCode).toBe(403);
+
+    const dre = await connecterPersonnel('aouellet');
+    expect((await get(dre, `/api/personnes/${N.gisele}/photo`)).statusCode).toBe(200);
+    const traces = await base.requete(`select 1 from journal_acces where sujet = $1 and motif = 'Photo' and demandeur_id = 'aouellet'`, [N.gisele]);
+    expect(traces.length).toBe(1);
+
+    expect((await get(g, `/api/personnes/${N.sarah}/photo`)).statusCode).toBe(403);
+    const s = await connecterCitoyen(N.sarah!);
+    expect((await get(s, `/api/personnes/${N.sarah}/photo`)).statusCode).toBe(404);
+  });
+
+  it('Gisèle voit ses personnes de confiance', async () => {
+    const g = await connecterCitoyen(N.gisele!);
+    expect((await get(g, '/api/moi')).json().mandataires).toEqual([
+      { nom: 'Nadia Tremblay', niveau: 2, niveauNom: 'Organiser', debut: '2025-03-01', fin: '2027-12-31' },
+    ]);
   });
 });
 

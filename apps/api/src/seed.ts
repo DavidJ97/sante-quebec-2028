@@ -5,7 +5,8 @@
  * Utilisation : npm run seed   (repart d'une base vide)
  */
 
-import { rm } from 'node:fs/promises';
+import { readdir, readFile, rm } from 'node:fs/promises';
+import { extname } from 'node:path';
 import type { Base, Executeur } from './db.js';
 import * as registre from './registre.js';
 import { autoriser } from './passerelle.js';
@@ -128,8 +129,35 @@ export async function semer(base: Base): Promise<Record<string, string>> {
     await autoriser(tx, lemire, n.gisele!, 'medicaments', 'lire', '', il(9, 15));
     await autoriser(tx, nadia, n.gisele!, 'rendezvous', 'lire', '', il(2, 19));
 
+    await chargerPhotos(tx, cle);
     return n;
   });
+}
+
+const DOSSIER_PHOTOS = new URL('../db/photos/', import.meta.url);
+const TYPES: Record<string, string> = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp' };
+/** Dates de prise fictives, cohérentes avec la règle : chaque année avant 5 ans, aux 5 ans ensuite. */
+const PRISES: Record<string, string> = {
+  gisele: '2025-03-04', nadia: '2023-09-12', marc: '2024-05-21', sarah: '2026-02-03', kevin: '2022-11-30', leo: '2026-08-19', mj: '2024-01-15',
+};
+
+/** Charge les portraits déposés dans apps/api/db/photos (voir docs/photos/prompts.md). Facultatif. */
+async function chargerPhotos(tx: Executeur, cle: Record<string, string>) {
+  let fichiers: string[] = [];
+  try { fichiers = await readdir(DOSSIER_PHOTOS); } catch { return; }
+  for (const f of fichiers) {
+    const type = TYPES[extname(f).toLowerCase()];
+    if (!type) continue;
+    const id = f.slice(0, -extname(f).length);
+    const image = await readFile(new URL(f, DOSSIER_PHOTOS));
+    if (cle[id]) {
+      await tx.requete(`insert into photo (personne_cle, image, type_mime, prise_le, source) values ($1, $2, $3, $4, 'point_de_service')`,
+        [cle[id], image, type, PRISES[id] ?? '2025-01-01']);
+    } else {
+      const [e] = await tx.requete('select 1 from employe where id = $1', [id]);
+      if (e) await tx.requete(`insert into photo (employe_id, image, type_mime, prise_le, source) values ($1, $2, $3, '2025-09-01', 'etablissement')`, [id, image, type]);
+    }
+  }
 }
 
 interface Coord { adresse: string; ville: string; codePostal: string; telephone: string; modeSimplifie?: boolean }
