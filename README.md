@@ -1,67 +1,84 @@
 # Santé Québec 2028
 
-Application publique de santé du Québec : un identifiant QC unique de la naissance au décès, un registre des personnes, une passerelle qui décide qui voit quoi, et un journal des accès que personne ne peut modifier.
+Le dossier de santé public du Québec, de la naissance à la fin de vie : un identifiant QC unique, un registre des personnes, une passerelle qui décide qui voit quoi, et un journal des accès que personne ne peut modifier.
 
-Toutes les personnes dans les données de départ sont **fictives**.
+**Phase : Alpha.** Toutes les personnes et toutes les données sont fictives. Prototype de conception, non officiel.
+
+| Citoyen, sur téléphone | Espace clinique |
+|---|---|
+| ![Accueil de Gisèle](docs/captures/02-accueil-telephone.png) | ![Fiche de niveau 1 après un accès d'urgence](docs/captures/10-clinique-fiche.png) |
+
+Toutes les captures se trouvent dans [`docs/captures`](docs/captures) et se régénèrent avec `npm run captures`.
+
+## Ce que fait la version 0.2
+
+**Pour les citoyens et leurs proches**
+- Connexion avec le numéro QC. Une faute de frappe est détectée avant tout envoi.
+- Rendez-vous : confirmer, ou choisir une autre plage parmi celles qui sont offertes.
+- Médicaments regroupés selon le moment de la journée, carnet de vaccination.
+- Résumé de santé : allergies, maladies, besoins d'adaptation, volontés.
+- « Qui a consulté mon dossier », avec un bouton pour signaler un accès qu'on ne reconnaît pas.
+- La famille calculée à partir de l'État civil.
+- Les personnes dont on s'occupe : on voit ce que la procuration permet, et pourquoi le reste demeure privé.
+
+**Pour le personnel clinique**
+- Recherche par numéro QC ou par NAM.
+- Bandeau patient fixe.
+- Fiche de niveau 1.
+- Accès d'urgence par motif normalisé, limité à 12 heures, puis revu.
+
+**Garanties**
+- Règles d'accès centralisées et testées ([0001](docs/decisions/0001-passerelle.md)).
+- Journal chaîné que la base refuse de modifier ([0002](docs/decisions/0002-journal.md)).
+- « Aucune allergie connue » n'existe que si un professionnel l'a constaté et signé.
+- Accessibilité vérifiée automatiquement à chaque modification, selon le SGQRI 008 3.0 (WCAG 2.1 AA, et des critères des WCAG 2.2).
+- Polices hébergées avec l'application, aucune requête vers un tiers.
 
 ## Structure
 
 ```
-packages/noyau   Règles pures, sans dépendance : numéro QC, cycle de vie du registre,
-                 règles d'accès, forme du journal chaîné, calcul de la parenté.
-apps/api         Serveur Fastify + PostgreSQL. Applique la passerelle et écrit le journal.
-apps/web         Application React : connexion, espace citoyen, espace clinique.
+packages/noyau   Règles pures : numéro QC, cycle de vie du registre, accès, journal, parenté.
+apps/api         Fastify + PostgreSQL (PGlite en développement). Passerelle, journal, registre.
+apps/web         React. Gabarit de service public, espace citoyen, espace clinique.
+e2e              Parcours Playwright et vérifications d'accessibilité (axe).
+docs             Revue critique, décisions d'architecture, captures.
 ```
 
 ## Démarrer
 
-Node 22 ou plus récent.
+Il faut Node 22 ou plus récent.
 
 ```bash
 npm install
-npm run seed      # crée une base de développement locale avec les données fictives
+npm run seed      # base de développement locale, données fictives
 npm run dev       # API sur :3100, application sur http://localhost:5173
 ```
 
-En développement, aucun texto n'est envoyé : le code de connexion s'affiche à l'écran.
+En développement, aucun texto n'est envoyé : le code s'affiche à l'écran.
 
-| Pour essayer | Identifiant |
+| Personnage | Pour se connecter |
 |---|---|
-| Gisèle, 87 ans, mode simplifié | `4829 1357 066` |
-| Sarah, enceinte | `5196 4037 286` |
-| Médecin d'urgence (aucun lien de soins) | `aouellet` |
-| Médecin de famille de Gisèle | `proy` |
-| Agent du registre | `mgagnon` |
-| Exploitation, Québec Tech | `lchen` |
+| Gisèle Tremblay, 87 ans, mode simplifié, allergie grave | `4829 1357 066` |
+| Nadia Tremblay, sa fille, procuration « Organiser » | `3061 8429 756` |
+| Sarah Lavoie, enceinte, « aucune allergie connue » vérifiée | `5196 4037 286` |
+| Kevin N'Diaye, allergies jamais documentées | `8152 7304 965` |
+| Marc Tremblay, père de Léo (15 ans) | `6604 9172 384` |
+| Dre Anne Ouellet, urgence, sans lien de soins | `aouellet` |
+| Dr Pierre Roy, médecin de famille de Gisèle | `proy` |
 
-Les numéros de Nadia (procuration « Organiser » pour sa mère), Marc et Léo sont tirés au hasard au moment du semis. `npm run seed` les affiche à la fin.
+## Vérifier
 
 ```bash
-npm test               # 18 tests du noyau, 19 tests de l'API par HTTP
-npm run verifier-types # TypeScript strict sur les trois paquets
+npm run verifier-types   # TypeScript strict
+npm test                 # 18 tests du noyau, 21 tests de l'API par HTTP
+npm run e2e              # 20 parcours dans un navigateur, téléphone et ordinateur, avec axe
 ```
 
-## Garanties de sécurité
+L'intégration continue sur GitHub lance tout cela à chaque push.
 
-- **La passerelle décide côté serveur.** Chaque lecture et chaque écriture passent par `decider()` du noyau. Le navigateur ne reçoit que ce qui est permis.
-- **Le journal est inaltérable.** Chaque entrée contient l'empreinte SHA-256 de la précédente. Des déclencheurs PostgreSQL refusent `UPDATE`, `DELETE` et `TRUNCATE`.
-- **Un refus reste inscrit.** La transaction est validée avant de renvoyer l'erreur 403.
-- **Connexion.**
-  - Un code à 6 chiffres envoyé au téléphone inscrit, valide 10 minutes, avec 5 essais au maximum.
-  - Un témoin de session `httpOnly`, `SameSite=Strict`.
-  - L'API n'accepte que du JSON.
-- **Rien n'est supprimé du registre.** Un numéro fusionné ou remplacé renvoie vers le bon, et aucun numéro n'est jamais réattribué.
-- **Les quatre portes sont étanches.** Le personnel administratif et l'équipe technique ne voient jamais le contenu clinique.
+## Documentation
 
-## Production
-
-Définir `DATABASE_URL` (PostgreSQL 15 ou plus récent) et `SANTE_SECRET`. Les migrations dans `apps/api/db/migrations` s'appliquent au démarrage. Sans `DATABASE_URL`, l'API utilise PGlite, c'est-à-dire PostgreSQL en WebAssembly, dans `.donnees/`.
-
-## Suite
-
-1. Écrans de la bureaucratie : naissances, fusions, décès. Les routes existent déjà.
-2. Écrans de l'exploitation : vérification du journal, revue des accès d'urgence.
-3. Écriture clinique : inscrire une allergie, une dose de vaccin, une rencontre.
-4. Grossesse et choix prénataux. Ligne citoyenne.
+- [Revue critique de la version 0.2](docs/revue-critique.md) : ce qui n'allait pas, ce qui a été corrigé, ce qui reste à faire.
+- Décisions d'architecture : [passerelle](docs/decisions/0001-passerelle.md), [journal](docs/decisions/0002-journal.md), [authentification avec le SQIN](docs/decisions/0003-authentification.md), [alignement FHIR](docs/decisions/0004-fhir.md).
 
 Le premier prototype, entièrement en mémoire, se trouve au commit `f415155`.

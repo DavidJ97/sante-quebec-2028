@@ -37,10 +37,10 @@ export async function connecterPersonnel(page: Page, identifiant: string) {
   await page.getByRole('button', { name: 'Se connecter' }).click();
 }
 
-/** Aucune violation WCAG 2.1 A ou AA détectable automatiquement. */
+/** Aucune violation détectable automatiquement : WCAG 2.1 A et AA, et critères AA des WCAG 2.2 (SGQRI 008 3.0). */
 export async function verifierAccessibilite(page: Page) {
   await page.waitForLoadState('networkidle');
-  const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+  const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
   const resume = r.violations.map((v) => `${v.id} (${v.impact}) : ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`);
   expect(resume, resume.join('\n')).toEqual([]);
 }

@@ -8,7 +8,7 @@ const PAGES: Record<string, { titre: string; illustration: NomIllustration; chap
     illustration: 'adaptation',
     chapeau: 'Ce service est conçu d\'abord pour les personnes âgées et pour celles qui vivent avec un handicap.',
     contenu: [
-      { titre: 'Ce que nous visons', texte: ['Le niveau AA des Règles pour l\'accessibilité des contenus Web (WCAG 2.1), comme l\'exige le standard gouvernemental québécois sur l\'accessibilité du Web.'] },
+      { titre: 'Ce que nous visons', texte: ['Le Standard sur l\'accessibilité des sites Web (SGQRI\u00a0008\u00a03.0, en vigueur depuis avril\u00a02024)\u00a0: les WCAG\u00a02.1 au niveau AA et certains critères des WCAG\u00a02.2.'] },
       { titre: 'Ce qui est déjà en place', texte: [
         'Texte de 18 pixels au minimum, contrastes vérifiés, cibles tactiles d\'au moins 48 pixels.',
         'Navigation complète au clavier, focus très visible, lien pour passer au contenu principal.',
