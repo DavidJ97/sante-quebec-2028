@@ -1,41 +1,67 @@
-# Santé Québec 2037 — prototype
+# Santé Québec 2028
 
-Premier prototype codé de l'application santé publique du Québec, bâtie à l'interne par Québec Tech.
-Toutes les personnes et tous les dossiers sont **fictifs**.
+Application publique de santé du Québec : un identifiant QC unique de la naissance au décès, un registre des personnes, une passerelle qui décide qui voit quoi, et un journal des accès que personne ne peut modifier.
 
-## Ce qui fonctionne
+Toutes les personnes dans les données de départ sont **fictives**.
 
-**Le noyau** (`core/`, en JavaScript sans aucune dépendance) :
+## Structure
 
-| Module | Rôle |
-|---|---|
-| `numero.js` | Identifiant QC : 11 chiffres affichés `QC 4829 1357 066`. 10 chiffres au hasard (jamais de 0 en tête) et un chiffre de contrôle de Damm, qui détecte toute faute de frappe d'un chiffre et toute inversion de deux chiffres voisins. Aucune information encodée. |
-| `registre.js` | Registre des personnes : clé interne invisible, numéro public remplaçable. Statuts Réservé, Actif, Temporaire, Décédé, Fusionné, Remplacé, Annulé. Rien n'est supprimé et un numéro n'est jamais réattribué. Correspondance avec le NAM. |
-| `filiation.js` | Seul le lien parent → enfant est stocké. Fratrie, grands-parents, oncles, tantes et cousins sont calculés. Le second parent vient de l'État civil, jamais d'un test biologique. |
-| `passerelle.js` | Passerelle d'accès : qui demande, sur qui, quelle donnée, pourquoi. Règles d'âge (bébé à naître, moins de 14 ans, 14 à 17 ans, adulte), procuration en 4 niveaux, lien de soins actif obligatoire, accès d'urgence, portes sans contenu clinique. |
-| `journal.js` | Journal d'accès chaîné par SHA-256 : modifier une entrée passée casse la chaîne. Alertes d'accès inhabituel. |
+```
+packages/noyau   Règles pures, sans dépendance : numéro QC, cycle de vie du registre,
+                 règles d'accès, forme du journal chaîné, calcul de la parenté.
+apps/api         Serveur Fastify + PostgreSQL. Applique la passerelle et écrit le journal.
+apps/web         Application React : connexion, espace citoyen, espace clinique.
+```
 
-**L'interface** (`web/`, React) : les quatre portes.
+## Démarrer
 
-- **Patients et proches** : accueil en mode simplifié pour les aînés (Gisèle, 87 ans), rendez-vous à confirmer ou changer, médicaments par moment de la journée, bouton Aidez-moi, « Qui a vu mon dossier », famille calculée, profil du bébé à naître (Sarah) avec choix du VRS, vue d'une aidante (Nadia) et d'un parent d'ado (Marc).
-- **Employés cliniques** : recherche par numéro QC ou NAM, fiche de niveau 1, accès d'urgence justifié.
-- **Bureaucratie** : naissance confirmée en 48 h, fusion de fiches en double, procurations. Aucun contenu clinique.
-- **Admin tech** : état du journal, revue des accès d'urgence, alertes, test d'inviolabilité, carte des dépendances.
-
-Chaque lecture passe par la passerelle et s'inscrit au journal.
-
-## Lancer
+Node 22 ou plus récent.
 
 ```bash
 npm install
-npm test        # 16 tests du noyau
-npm run dev     # interface sur http://localhost:5173
+npm run seed      # crée une base de développement locale avec les données fictives
+npm run dev       # API sur :3100, application sur http://localhost:5173
 ```
 
-## Carte des dépendances
+En développement, aucun texto n'est envoyé : le code de connexion s'affiche à l'écran.
 
-`public/carte.html` montre les 62 fonctionnalités prévues et ce qui dépend de quoi. Elle sert de plan de construction : on bâtit d'abord les gros cercles du centre.
+| Pour essayer | Identifiant |
+|---|---|
+| Gisèle, 87 ans, mode simplifié | `4829 1357 066` |
+| Sarah, enceinte | `5196 4037 286` |
+| Médecin d'urgence (aucun lien de soins) | `aouellet` |
+| Médecin de famille de Gisèle | `proy` |
+| Agent du registre | `mgagnon` |
+| Exploitation, Québec Tech | `lchen` |
 
-## Suite prévue
+Les numéros de Nadia (procuration « Organiser » pour sa mère), Marc et Léo sont tirés au hasard au moment du semis. `npm run seed` les affiche à la fin.
 
-Étape 2 : carnet vaccinal complet, résultats, registre des rencontres. Étape 3 : logistique, IA publique de prévision, aînés en hébergement. Voir le plan complet dans le document « Application Santé Québec 2037 — plan de A à Z ».
+```bash
+npm test               # 18 tests du noyau, 19 tests de l'API par HTTP
+npm run verifier-types # TypeScript strict sur les trois paquets
+```
+
+## Garanties de sécurité
+
+- **La passerelle décide côté serveur.** Chaque lecture et chaque écriture passent par `decider()` du noyau. Le navigateur ne reçoit que ce qui est permis.
+- **Le journal est inaltérable.** Chaque entrée contient l'empreinte SHA-256 de la précédente. Des déclencheurs PostgreSQL refusent `UPDATE`, `DELETE` et `TRUNCATE`.
+- **Un refus reste inscrit.** La transaction est validée avant de renvoyer l'erreur 403.
+- **Connexion.**
+  - Un code à 6 chiffres envoyé au téléphone inscrit, valide 10 minutes, avec 5 essais au maximum.
+  - Un témoin de session `httpOnly`, `SameSite=Strict`.
+  - L'API n'accepte que du JSON.
+- **Rien n'est supprimé du registre.** Un numéro fusionné ou remplacé renvoie vers le bon, et aucun numéro n'est jamais réattribué.
+- **Les quatre portes sont étanches.** Le personnel administratif et l'équipe technique ne voient jamais le contenu clinique.
+
+## Production
+
+Définir `DATABASE_URL` (PostgreSQL 15 ou plus récent) et `SANTE_SECRET`. Les migrations dans `apps/api/db/migrations` s'appliquent au démarrage. Sans `DATABASE_URL`, l'API utilise PGlite, c'est-à-dire PostgreSQL en WebAssembly, dans `.donnees/`.
+
+## Suite
+
+1. Écrans de la bureaucratie : naissances, fusions, décès. Les routes existent déjà.
+2. Écrans de l'exploitation : vérification du journal, revue des accès d'urgence.
+3. Écriture clinique : inscrire une allergie, une dose de vaccin, une rencontre.
+4. Grossesse et choix prénataux. Ligne citoyenne.
+
+Le premier prototype, entièrement en mémoire, se trouve au commit `f415155`.

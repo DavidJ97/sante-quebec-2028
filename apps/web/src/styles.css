@@ -1,0 +1,148 @@
+/* Santé Québec — feuille de style de l'application
+   Principes : lisible d'abord (aînés), contraste AA minimum, cibles de 48 px, aucune information portée par la couleur seule. */
+
+:root {
+  --encre: #0E2A4F;
+  --texte: #14233A;
+  --texte-2: #45556C;
+  --fond: #F3F6FA;
+  --surface: #FFFFFF;
+  --surface-2: #EAF0F7;
+  --ligne: #CBD5E1;
+  --ligne-forte: #8A9AB0;
+  --accent: #0B57B8;
+  --accent-fort: #08428C;
+  --accent-doux: #E3EDFA;
+  --succes: #176B3A;
+  --succes-doux: #E2F2E8;
+  --attention: #8F3D00;
+  --attention-doux: #FCEBDD;
+  --critique: #A3141E;
+  --critique-doux: #FBE5E7;
+  --sur-encre: #FFFFFF;
+  --ombre: 0 1px 2px rgba(14, 42, 79, .06), 0 2px 8px rgba(14, 42, 79, .05);
+  --rayon: 14px;
+  --police: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --encre: #071528;
+    --texte: #E6EDF6;
+    --texte-2: #A8B6C9;
+    --fond: #0B1422;
+    --surface: #132036;
+    --surface-2: #1A2A44;
+    --ligne: #2A3C5A;
+    --ligne-forte: #50658A;
+    --accent: #7FB1F5;
+    --accent-fort: #B0CFF9;
+    --accent-doux: #1A3358;
+    --succes: #7ED6A0;
+    --succes-doux: #143322;
+    --attention: #F4B07A;
+    --attention-doux: #3A2412;
+    --critique: #FF959C;
+    --critique-doux: #421A1F;
+    --sur-encre: #E6EDF6;
+    --ombre: none;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--fond); color: var(--texte); font-family: var(--police); font-size: 18px; line-height: 1.5; }
+h1, h2, h3 { margin: 0; line-height: 1.2; text-wrap: balance; color: var(--texte); }
+h1 { font-size: 1.75rem; }
+h2 { font-size: 1.3rem; }
+h3 { font-size: 1.1rem; }
+p { margin: 0; }
+a { color: var(--accent); text-underline-offset: 3px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.visuellement-cache { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- Structure ---------- */
+.entete { background: var(--encre); color: var(--sur-encre); padding-top: env(safe-area-inset-top, 0px); }
+.entete-int { max-width: 1120px; margin: 0 auto; min-height: 60px; display: flex; align-items: center; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap;
+  padding: 8px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); }
+.marque { display: inline-flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; font-weight: 700; font-size: 1.1rem; letter-spacing: .01em; }
+.marque svg { flex: none; }
+.entete-droite { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: .95rem; }
+.lien-entete { background: none; border: 1px solid rgba(255,255,255,.45); color: inherit; border-radius: 999px; min-height: 40px; padding: 0 14px; cursor: pointer; }
+.lien-entete:hover { background: rgba(255,255,255,.1); }
+
+.page { max-width: 1120px; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 20px; }
+.page.etroite { max-width: 560px; }
+.pile { display: flex; flex-direction: column; gap: 12px; }
+.rangee { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.grille { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; }
+.fil { font-size: .95rem; }
+.fil a { display: inline-flex; align-items: center; min-height: 44px; }
+
+/* ---------- Surfaces ---------- */
+.carte { background: var(--surface); border: 1px solid var(--ligne); border-radius: var(--rayon); padding: 18px 20px; box-shadow: var(--ombre); display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.carte.alerte { background: var(--critique-doux); border: 2px solid var(--critique); }
+.carte.alerte h2, .carte.alerte h3 { color: var(--critique); }
+.carte.attention { background: var(--attention-doux); border-color: var(--attention); }
+.sur-titre { font-size: .85rem; letter-spacing: .06em; text-transform: uppercase; color: var(--texte-2); font-weight: 700; }
+.secondaire { color: var(--texte-2); }
+.petit { font-size: .9rem; }
+.chiffres { font-variant-numeric: tabular-nums; letter-spacing: .03em; white-space: nowrap; }
+.liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.liste > li { padding: 12px 0; border-top: 1px solid var(--ligne); display: flex; flex-direction: column; gap: 2px; }
+.liste > li:first-child { border-top: 0; padding-top: 0; }
+.liste > li:last-child { padding-bottom: 0; }
+
+.pastille { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; font-size: .85rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--ligne); color: var(--texte-2); background: var(--surface); }
+.pastille.ok { background: var(--succes-doux); color: var(--succes); border-color: transparent; }
+.pastille.attention { background: var(--attention-doux); color: var(--attention); border-color: transparent; }
+.pastille.non { background: var(--critique-doux); color: var(--critique); border-color: transparent; }
+
+/* ---------- Boutons et champs ---------- */
+.bouton { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; padding: 0 22px; border-radius: 12px; border: 2px solid var(--accent);
+  background: var(--accent); color: var(--surface); font-weight: 700; cursor: pointer; text-decoration: none; }
+.bouton:hover { background: var(--accent-fort); border-color: var(--accent-fort); }
+.bouton.secondaire-b { background: var(--surface); color: var(--accent); }
+.bouton.secondaire-b:hover { background: var(--accent-doux); }
+.bouton.discret { background: transparent; border-color: var(--ligne-forte); color: var(--texte); font-weight: 400; }
+.bouton.danger { background: var(--attention); border-color: var(--attention); color: var(--surface); }
+.bouton:disabled { opacity: .55; cursor: not-allowed; }
+.bouton.plein-largeur { width: 100%; }
+
+.champ { display: flex; flex-direction: column; gap: 6px; }
+.champ label { font-weight: 700; }
+.champ .aide { color: var(--texte-2); font-size: .95rem; }
+.champ input, .champ textarea, .champ select { min-height: 56px; padding: 10px 14px; border: 2px solid var(--ligne-forte); border-radius: 12px; background: var(--surface); width: 100%; }
+.champ input.gros { font-size: 1.5rem; letter-spacing: .08em; font-variant-numeric: tabular-nums; }
+.champ input[aria-invalid="true"] { border-color: var(--critique); }
+.champ .erreur { color: var(--critique); font-weight: 700; display: flex; gap: 6px; }
+
+/* ---------- Grandes tuiles (accueil citoyen) ---------- */
+.tuile { display: flex; align-items: center; gap: 16px; min-height: 88px; padding: 16px 20px; border-radius: 16px; border: 2px solid var(--ligne); background: var(--surface); color: var(--texte); text-decoration: none; box-shadow: var(--ombre); }
+.tuile:hover { border-color: var(--accent); }
+.tuile .titre { display: block; font-size: 1.3rem; font-weight: 700; }
+.tuile .sous { display: block; color: var(--texte-2); }
+.tuile .icone { width: 44px; height: 44px; flex: none; color: var(--accent); }
+.tuile.principale { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.tuile.principale .sous, .tuile.principale .icone { color: inherit; }
+.tuile .chevron { margin-left: auto; flex: none; opacity: .7; }
+
+.etat { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.squelette { background: linear-gradient(90deg, var(--surface-2), var(--surface), var(--surface-2)); background-size: 200% 100%; animation: squelette 1.4s ease-in-out infinite; border-radius: 8px; height: 1.2em; }
+@keyframes squelette { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { .squelette { animation: none; } }
+
+.bandeau-dev { border: 2px dashed var(--attention); background: var(--attention-doux); color: var(--attention); border-radius: 12px; padding: 10px 14px; font-size: .95rem; }
+
+/* ---------- Espace clinique : plus dense ---------- */
+.clinique { font-size: 16px; }
+.clinique .carte { padding: 14px 16px; }
+.clinique h1 { font-size: 1.5rem; }
+.patient { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: center; }
+.avatar { width: 64px; height: 64px; border-radius: 12px; background: var(--accent-doux); color: var(--accent); display: grid; place-items: center; font-weight: 700; font-size: 1.4rem; flex: none; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 10px 12px; border-top: 1px solid var(--ligne); vertical-align: top; }
+thead th { border-top: 0; font-size: .85rem; color: var(--texte-2); text-transform: uppercase; letter-spacing: .05em; }
+.defile { overflow-x: auto; }
