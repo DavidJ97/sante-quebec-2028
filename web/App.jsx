@@ -4,12 +4,14 @@ import Patient from './portes/Patient.jsx';
 import Clinique from './portes/Clinique.jsx';
 import Bureaucratie from './portes/Bureaucratie.jsx';
 import AdminTech from './portes/AdminTech.jsx';
+import Parcours from './portes/Parcours.jsx';
 
 const PORTES = [
   { id: 'patient', nom: 'Patients et proches', Composant: Patient },
   { id: 'clinique', nom: 'Employés cliniques', Composant: Clinique },
   { id: 'bureau', nom: 'Bureaucratie', Composant: Bureaucratie },
   { id: 'tech', nom: 'Admin tech', Composant: AdminTech },
+  { id: 'vie', nom: 'Fiche, toute une vie', Composant: Parcours },
 ];
 
 export default function App() {
