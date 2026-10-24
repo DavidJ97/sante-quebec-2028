@@ -1,21 +1,22 @@
 {
   "name": "sante-quebec-2028",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Prototype de l'application Santé Québec 2037 : identifiant QC, registre des personnes, passerelle d'accès et les quatre portes.",
+  "description": "Application Santé Québec : identifiant QC, registre des personnes, passerelle d'accès, journal inviolable, espaces citoyen et clinique.",
+  "workspaces": ["packages/*", "apps/*"],
+  "engines": { "node": ">=22" },
   "scripts": {
-    "test": "node --test tests/*.test.js",
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "dev": "npm run dev -w apps/api & npm run dev -w apps/web",
+    "test": "npm test -w packages/noyau && npm test -w apps/api",
+    "verifier-types": "tsc -p packages/noyau && tsc -p apps/api && tsc -p apps/web",
+    "build": "npm run build -w apps/web",
+    "seed": "npm run seed -w apps/api"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.3",
-    "vite": "^5.4.10"
+    "typescript": "5.7.2",
+    "vitest": "2.1.8",
+    "tsx": "4.19.2",
+    "@types/node": "22.10.2"
   }
 }
