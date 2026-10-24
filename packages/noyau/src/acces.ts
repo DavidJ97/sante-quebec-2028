@@ -165,3 +165,14 @@ export function decider(c: Contexte): Verdict {
 
   return non('Aucun lien autorisé avec cette personne');
 }
+
+/** Motifs normalisés d'un accès d'urgence (« bris de verre »). « autre » exige une précision écrite. */
+export const MOTIFS_URGENCE = {
+  inconscient: 'Patient inconscient ou incapable de communiquer',
+  urgence_vitale: 'Urgence vitale en cours',
+  transfert: 'Transfert d\'un autre établissement, dossier non reçu',
+  inapte: 'Patient inapte à consentir, aucun représentant joignable',
+  autre: 'Autre motif (préciser)',
+} as const;
+export type MotifUrgence = keyof typeof MOTIFS_URGENCE;
+export const DUREE_ACCES_URGENCE_H = 12;

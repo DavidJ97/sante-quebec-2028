@@ -43,6 +43,15 @@ export interface Acces {
   numero: NumeroResolu;
 }
 
+/** Évalue sans rien lire ni journaliser : sert à afficher ce qui est ouvert ou fermé. */
+export async function evaluerSansJournal(tx: Executeur, demandeur: Demandeur, numero: string, donnee: Donnee, action: Action = 'lire', maintenant = new Date()): Promise<Verdict> {
+  const r = await resoudre(tx, numero);
+  const sujet = await chargerSujet(tx, r);
+  const procurations = demandeur.type === 'citoyen' ? await procurationsEnVigueur(tx, r.personneCle, demandeur.personneCle, maintenant) : [];
+  const liensSoins = demandeur.type === 'employe' && demandeur.porte === 'clinique' ? await liensSoinsEnVigueur(tx, demandeur.id, r.personneCle, maintenant) : [];
+  return decider({ demandeur, sujet, donnee, action, maintenant, procurations, liensSoins });
+}
+
 /**
  * Évalue et journalise. Ne lève PAS d'exception sur un refus : un refus doit rester inscrit au journal,
  * et une exception annulerait la transaction. Utiliser `avecAcces` dans les routes.

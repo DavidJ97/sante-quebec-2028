@@ -158,25 +158,34 @@ describe('personnel clinique', () => {
 
     expect((await get(j, '/api/recherche?q=4829%201357%20060')).statusCode).toBe(400);
     expect((await get(j, `/api/personnes/${N.gisele}/fiche-urgence`)).statusCode).toBe(403);
-    expect((await post(j, `/api/personnes/${N.gisele}/acces-urgence`, { motif: 'court' })).statusCode).toBe(400);
-    expect((await post(j, `/api/personnes/${N.gisele}/acces-urgence`, { motif: 'Patiente confuse après une chute' })).statusCode).toBe(201);
+    expect((await post(j, `/api/personnes/${N.gisele}/acces-urgence`, {})).statusCode).toBe(400);
+    expect((await post(j, `/api/personnes/${N.gisele}/acces-urgence`, { motifCode: 'autre', precision: 'court' })).statusCode).toBe(400);
+    const ouvert = await post(j, `/api/personnes/${N.gisele}/acces-urgence`, { motifCode: 'inapte', precision: 'Patiente confuse après une chute' });
+    expect(ouvert.statusCode).toBe(201);
+    const heures = (new Date(ouvert.json().expireLe).getTime() - Date.now()) / 3_600_000;
+    expect(heures).toBeGreaterThan(11.9);
+    expect(heures).toBeLessThanOrEqual(12);
 
     const fiche = (await get(j, `/api/personnes/${N.gisele}/fiche-urgence`)).json();
     expect(fiche.acces.urgence).toBe(true);
-    expect(fiche.allergies[0]).toMatchObject({ substance: 'Pénicilline', gravite: 'grave' });
+    expect(fiche.acces.expireLe).toBeTruthy();
+    expect(fiche.allergies.etat).toBe('presentes');
+    expect(fiche.allergies.elements[0]).toMatchObject({ substance: 'Pénicilline', gravite: 'grave' });
     expect(fiche.proches[0]).toMatchObject({ nom: 'Nadia Tremblay', niveau: 2 });
   });
 
   it('le médecin de famille a accès sans urgence', async () => {
     const j = await connecterPersonnel('proy');
     const fiche = (await get(j, `/api/personnes/${N.gisele}/fiche-urgence`)).json();
-    expect(fiche.acces).toEqual({ raison: 'Lien de soins : Médecin de famille', urgence: false });
+    expect(fiche.acces).toEqual({ raison: 'Lien de soins : Médecin de famille', urgence: false, expireLe: null });
   });
 
   it('Québec Tech voit l\'accès d\'urgence à revoir, pas le contenu', async () => {
     const j = await connecterPersonnel('lchen');
     const u = (await get(j, '/api/exploitation/acces-urgence')).json();
-    expect(u[0]).toMatchObject({ employe: 'Dre Anne Ouellet', sujet: N.gisele, motif: 'Patiente confuse après une chute' });
+    expect(u[0]).toMatchObject({ employe: 'Dre Anne Ouellet', sujet: N.gisele, motifCode: 'inapte', motif: 'Patiente confuse après une chute', decision: null });
+    expect((await post(j, `/api/exploitation/acces-urgence/${u[0].id}/revue`, { decision: 'justifie' })).statusCode).toBe(204);
+    expect((await post(j, `/api/exploitation/acces-urgence/${u[0].id}/revue`, { decision: 'justifie' })).statusCode).toBe(404);
     expect((await get(j, `/api/personnes/${N.gisele}/donnees/allergies`)).statusCode).toBe(403);
   });
 });
@@ -209,6 +218,26 @@ describe('registre', () => {
     expect((await post(j, '/api/registre/fusions', { perdant: N.temporaire, gagnant: N.mj })).statusCode).toBe(204);
     const r = (await get(j, `/api/recherche?q=${N.temporaire}`)).json();
     expect(r.numero).toBe(N.mj);
+  });
+});
+
+describe('sécurité clinique', () => {
+  it('distingue « aucune allergie connue » (constat signé) de « non documenté »', async () => {
+    const j = await connecterCitoyen(N.sarah!);
+    const a = (await get(j, `/api/personnes/${N.sarah}/donnees/allergies`)).json().valeur;
+    expect(a).toMatchObject({ etat: 'aucune_connue', elements: [], verification: { par: 'Sophie Dubé, Infirmière clinicienne' } });
+    const k = await connecterCitoyen(N.kevin!);
+    expect((await get(k, `/api/personnes/${N.kevin}/donnees/allergies`)).json().valeur).toEqual({ etat: 'non_documente', elements: [], verification: null });
+  });
+
+  it('afficher ses droits sur un proche n\'écrit rien au journal', async () => {
+    const avant = (await base.requete<{ n: number }>('select count(*)::int as n from journal_acces'))[0]!.n;
+    const j = await connecterCitoyen(N.nadia!);
+    const droits = (await get(j, `/api/personnes/${N.gisele}/droits`)).json() as { donnee: string; permis: boolean }[];
+    expect(droits.find((d) => d.donnee === 'rendezvous')!.permis).toBe(true);
+    expect(droits.find((d) => d.donnee === 'medicaments')!.permis).toBe(false);
+    const apres = (await base.requete<{ n: number }>('select count(*)::int as n from journal_acces'))[0]!.n;
+    expect(apres).toBe(avant);
   });
 });
 

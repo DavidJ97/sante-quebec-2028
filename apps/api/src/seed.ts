@@ -8,6 +8,7 @@
 import { rm } from 'node:fs/promises';
 import type { Base, Executeur } from './db.js';
 import * as registre from './registre.js';
+import { autoriser } from './passerelle.js';
 
 const PAR = 'donnees-de-depart';
 
@@ -23,15 +24,15 @@ export async function semer(base: Base): Promise<Record<string, string>> {
 
     await inscrire('gisele', { prenom: 'Gisèle', nom: 'Tremblay', dateNaissance: '1939-05-02', sexe: 'F', lieu: 'Trois-Rivières', nam: 'TREG39550211', numero: '48291357066' },
       { adresse: '1250, rue Laviolette', ville: 'Trois-Rivières', codePostal: 'G9A 1W2', telephone: '819 555-0132', modeSimplifie: true });
-    await inscrire('nadia', { prenom: 'Nadia', nom: 'Tremblay', dateNaissance: '1968-01-20', sexe: 'F', nam: 'TREN68512014' },
+    await inscrire('nadia', { prenom: 'Nadia', nom: 'Tremblay', dateNaissance: '1968-01-20', sexe: 'F', nam: 'TREN68512014', numero: '30618429756' },
       { adresse: '4410, rue Saint-Denis', ville: 'Montréal', codePostal: 'H2J 2L1', telephone: '514 555-0147' });
-    await inscrire('marc', { prenom: 'Marc', nom: 'Tremblay', dateNaissance: '1971-06-04', sexe: 'M' },
+    await inscrire('marc', { prenom: 'Marc', nom: 'Tremblay', dateNaissance: '1971-06-04', sexe: 'M', numero: '66049172384' },
       { adresse: '88, rue Saint-Jean', ville: 'Québec', codePostal: 'G1R 1N4', telephone: '418 555-0190' });
     await inscrire('sarah', { prenom: 'Sarah', nom: 'Lavoie', dateNaissance: '1994-03-11', sexe: 'F', numero: '51964037286' },
       { adresse: '2730, rue Masson', ville: 'Montréal', codePostal: 'H1Y 1W4', telephone: '514 555-0163' });
-    await inscrire('kevin', { prenom: 'Kevin', nom: 'N\'Diaye', dateNaissance: '1992-08-30', sexe: 'M' },
+    await inscrire('kevin', { prenom: 'Kevin', nom: 'N\'Diaye', dateNaissance: '1992-08-30', sexe: 'M', numero: '81527304965' },
       { adresse: '2730, rue Masson', ville: 'Montréal', codePostal: 'H1Y 1W4', telephone: '514 555-0178' });
-    await inscrire('leo', { prenom: 'Léo', nom: 'Tremblay', dateNaissance: '2011-02-14', sexe: 'M' },
+    await inscrire('leo', { prenom: 'Léo', nom: 'Tremblay', dateNaissance: '2011-02-14', sexe: 'M', numero: '17390582641' },
       { adresse: '88, rue Saint-Jean', ville: 'Québec', codePostal: 'G1R 1N4', telephone: '418 555-0191' });
     await inscrire('mj', { prenom: 'Marie-Josée', nom: 'Bélanger', dateNaissance: '1961-02-14', sexe: 'F', lieu: 'Trois-Rivières', nam: 'BELM61521412', numero: '26840173959' },
       { adresse: '510, 5e Rue', ville: 'Shawinigan', codePostal: 'G9N 1E6', telephone: '819 555-0110' });
@@ -54,15 +55,20 @@ export async function semer(base: Base): Promise<Record<string, string>> {
     n.temporaire = '90473528165';
 
     // Procuration : Nadia organise pour sa mère
-    await tx.requete(`insert into procuration (mandant_cle, mandataire_cle, niveau, fin) values ($1, $2, 2, '2027-12-31')`, [cle.gisele, cle.nadia]);
+    await tx.requete(`insert into procuration (mandant_cle, mandataire_cle, niveau, debut, fin) values ($1, $2, 2, '2025-03-01', '2027-12-31')`, [cle.gisele, cle.nadia]);
 
     // Personnel
     await tx.requete(`insert into employe (id, nom, role, porte, etablissement, telephone) values
       ('aouellet', 'Dre Anne Ouellet', 'Médecin d''urgence', 'clinique', 'CHU de Trois-Rivières', '819 555-0901'),
       ('proy', 'Dr Pierre Roy', 'Médecin de famille', 'clinique', 'GMF des Forges', '819 555-0902'),
       ('mgagnon', 'Martin Gagnon', 'Agent du registre', 'bureaucratie', 'Santé Québec, registre', '418 555-0903'),
-      ('lchen', 'Li Chen', 'Exploitation', 'admintech', 'Québec Tech', '514 555-0904')`);
-    await tx.requete(`insert into lien_soins (employe_id, personne_cle, contexte) values ('proy', $1, 'Médecin de famille')`, [cle.gisele]);
+      ('lchen', 'Li Chen', 'Exploitation', 'admintech', 'Québec Tech', '514 555-0904'),
+      ('jlemire', 'Julie Lemire', 'Pharmacienne', 'clinique', 'Pharmacie Lemire, Trois-Rivières', '819 555-0905'),
+      ('sdube', 'Sophie Dubé', 'Infirmière clinicienne', 'clinique', 'CHU Sainte-Justine', '514 555-0906')`);
+    await tx.requete(`insert into lien_soins (employe_id, personne_cle, contexte, debut) values
+      ('proy', $1, 'Médecin de famille', '2015-01-01'),
+      ('jlemire', $1, 'Pharmacie habituelle', '2018-01-01'),
+      ('sdube', $2, 'Suivi de grossesse', '2026-06-01')`, [cle.gisele, cle.sarah]);
 
     // Dossier clinique de Gisèle
     await tx.requete(`insert into allergie (personne_cle, substance, reaction, gravite, certitude, inscrite_par) values
@@ -100,7 +106,8 @@ export async function semer(base: Base): Promise<Record<string, string>> {
       ($1, 'Suivi avec le Dr Roy', 'GMF des Forges', '4000, boul. des Forges, Trois-Rivières', $4, 'confirme', null)`,
       [cle.gisele, dans(4, '09:30'), dans(11, '10:15'), dans(26, '14:00')]);
 
-    // Sarah
+    // Sarah : allergies vérifiées par l'infirmière, aucune trouvée (constat explicite)
+    await tx.requete(`insert into constat_absence (personne_cle, domaine, verifie_le, verifie_par) values ($1, 'allergies', '2026-06-12T14:20:00Z', 'sdube')`, [cle.sarah]);
     await tx.requete(`insert into medicament (personne_cle, nom, posologie, moments, source) values ($1, 'Acide folique 1 mg', '1 comprimé par jour', '{matin}', 'Dossier santé Québec')`, [cle.sarah]);
     await tx.requete(`insert into rendez_vous (personne_cle, objet, lieu, adresse, debut, statut) values
       ($1, 'Échographie du 3e trimestre', 'CHU Sainte-Justine', '3175, ch. de la Côte-Sainte-Catherine, Montréal', $2, 'confirme')`, [cle.sarah, dans(9, '08:45')]);
@@ -109,6 +116,17 @@ export async function semer(base: Base): Promise<Record<string, string>> {
     await tx.requete(`insert into vaccin (personne_cle, donne_le, produit, lieu, note) values
       ($1, '2020-10-05', 'VPH', 'École primaire', '4e année'),
       ($1, '2025-10-14', 'Hépatite B, dT, Méningocoque ACYW', 'École secondaire', 'Secondaire 3')`, [cle.leo]);
+
+    // Historique réel du journal : ces consultations passent par la passerelle, à des dates passées.
+    const il = (jours: number, h: number) => { const d = new Date(); d.setDate(d.getDate() - jours); d.setHours(h, 12, 0, 0); return d; };
+    const roy = { type: 'employe' as const, id: 'proy', porte: 'clinique' as const, role: 'Médecin de famille' };
+    const lemire = { type: 'employe' as const, id: 'jlemire', porte: 'clinique' as const, role: 'Pharmacienne' };
+    const nadia = { type: 'citoyen' as const, personneCle: cle.nadia! };
+    await autoriser(tx, roy, n.gisele!, 'medicaments', 'lire', '', il(21, 10));
+    await autoriser(tx, roy, n.gisele!, 'maladies', 'lire', '', il(21, 10));
+    await autoriser(tx, lemire, n.gisele!, 'allergies', 'lire', '', il(9, 15));
+    await autoriser(tx, lemire, n.gisele!, 'medicaments', 'lire', '', il(9, 15));
+    await autoriser(tx, nadia, n.gisele!, 'rendezvous', 'lire', '', il(2, 19));
 
     return n;
   });

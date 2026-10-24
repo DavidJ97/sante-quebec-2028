@@ -22,8 +22,22 @@ export const LECTEURS: Partial<Record<Donnee, Lecteur>> = {
   rendezvous: (ex, cle) => ex.requete(
     `select id::text, objet, lieu, adresse, debut, statut, note from rendez_vous
       where personne_cle = $1 and statut <> 'annule' and debut >= now() - interval '1 day' order by debut`, [cle]),
-  allergies: (ex, cle) => ex.requete(
-    'select id::text, substance, reaction, gravite, certitude from allergie where personne_cle = $1 order by (gravite = \'grave\') desc, substance', [cle]),
+  /**
+   * Trois états, jamais confondus :
+   * - presentes : au moins une allergie inscrite ;
+   * - aucune_connue : un professionnel a vérifié et constaté l'absence (constat daté et signé) ;
+   * - non_documente : personne n'a encore vérifié. Une liste vide ne veut PAS dire « aucune ».
+   */
+  allergies: async (ex, cle) => {
+    const elements = await ex.requete(
+      `select id::text, substance, reaction, gravite, certitude, inscrite_le as "inscriteLe" from allergie
+        where personne_cle = $1 order by (gravite = 'grave') desc, substance`, [cle]);
+    const [c] = await ex.requete<{ le: Date; par: string }>(
+      `select c.verifie_le as le, e.nom || ', ' || e.role as par from constat_absence c join employe e on e.id = c.verifie_par
+        where c.personne_cle = $1 and c.domaine = 'allergies'`, [cle]);
+    const etat = elements.length ? 'presentes' : c ? 'aucune_connue' : 'non_documente';
+    return { etat, elements, verification: !elements.length && c ? { le: c.le, par: c.par } : null };
+  },
   medicaments: (ex, cle) => ex.requete(
     `select id::text, nom, posologie, moments, mise_en_garde as "miseEnGarde", source from medicament
       where personne_cle = $1 and actif order by nom`, [cle]),

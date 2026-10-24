@@ -2,7 +2,7 @@ import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import cookie from '@fastify/cookie';
 import {
   DONNEES, estDonnee, estNumeroValide, formaterNumero, MESSAGES_NUMERO, problemeNumero, LIBELLES_STATUT, NIVEAUX_PROCURATION,
-  ageA, calculerParente, LIBELLES_PARENTE, TransitionInterdite, type Demandeur, type Porte, type NiveauProcuration, type Parente,
+  ageA, calculerParente, LIBELLES_PARENTE, TransitionInterdite, MOTIFS_URGENCE, DUREE_ACCES_URGENCE_H, type MotifUrgence, type Demandeur, type Porte, type NiveauProcuration, type Parente,
 } from '@sante/noyau';
 import type { Base, Executeur } from './db.js';
 import { ErreurHttp, interdit, introuvable, invalide, nonAutorise } from './erreurs.js';
@@ -10,7 +10,7 @@ import {
   creerCode, demandeurDeSession, fermerSession, masquerTelephone, NOM_TEMOIN, ouvrirSession, verifierCode, messagerieJournalConsole,
   DUREE_SESSION, type Messagerie,
 } from './connexion.js';
-import { autoriser, avecAcces } from './passerelle.js';
+import { autoriser, avecAcces, evaluerSansJournal } from './passerelle.js';
 import { FICHE_URGENCE, LECTEURS } from './dossier.js';
 import { inscrire, verifier } from './journal.js';
 import * as registre from './registre.js';
@@ -223,8 +223,8 @@ export function construireApp(o: Options) {
     return base.transaction(async (tx) => {
       const out = [];
       for (const x of donnees) {
-        const a = await autoriser(tx, d, numero, x, 'lire', 'Vérification des droits');
-        out.push({ donnee: x, libelle: DONNEES[x].libelle, permis: a.verdict.permis, raison: a.verdict.raison });
+        const v = await evaluerSansJournal(tx, d, numero, x, 'lire');
+        out.push({ donnee: x, libelle: DONNEES[x].libelle, permis: v.permis, raison: v.raison });
       }
       return out;
     });
@@ -281,7 +281,6 @@ export function construireApp(o: Options) {
            left join employe e on j.demandeur_type <> 'citoyen' and e.id = j.demandeur_id
            left join personne p on j.demandeur_type = 'citoyen' and p.cle::text = j.demandeur_id
           where j.sujet = $1 and j.decision = 'permis' and not (j.demandeur_type = 'citoyen' and j.demandeur_id = $2)
-            and j.motif <> 'Vérification des droits'
           order by j.no desc limit 200`, [a.numero.numero, a.numero.personneCle]);
       return lignes.map((l) => ({
         no: Number(l.no), le: l.le, donnee: DONNEES[l.donnee as keyof typeof DONNEES]?.libelle ?? l.donnee, action: l.action, urgence: l.urgence,
@@ -384,27 +383,39 @@ export function construireApp(o: Options) {
            join personne p on p.cle = pr.mandataire_cle left join coordonnees c on c.personne_cle = pr.mandataire_cle
           where pr.mandant_cle = $1 and pr.niveau >= 2 and pr.revoquee_le is null and (pr.fin is null or pr.fin >= current_date)
           order by pr.niveau desc`, [cle]);
-      return { ok: true as const, valeur: { acces: { raison: acces!.verdict.raison, urgence: acces!.verdict.urgence }, ...sections, proches } };
+      const [urg] = acces!.verdict.urgence ? await tx.requete<{ fin: Date }>(
+        `select max(fin) as fin from lien_soins where employe_id = $1 and personne_cle = $2 and urgence and fin > now()`, [d.id, cle]) : [];
+      return { ok: true as const, valeur: { acces: { raison: acces!.verdict.raison, urgence: acces!.verdict.urgence, expireLe: urg?.fin ?? null }, ...sections, proches } };
     });
     if (!r.ok) throw interdit(r.refus);
     return r.valeur;
   });
 
+  app.get('/api/motifs-urgence', async () => Object.entries(MOTIFS_URGENCE).map(([code, libelle]) => ({ code, libelle })));
+
   app.post<{ Params: { numero: string } }>('/api/personnes/:numero/acces-urgence', async (req, rep) => {
     const d = exigerEmploye(await demandeur(req), 'clinique');
     const numero = numeroQC(req.params.numero);
-    const motif = texte(corps(req), 'motif', { min: 10, max: 300 });
-    await base.transaction(async (tx) => {
+    const c = corps(req);
+    const code = c.motifCode;
+    if (typeof code !== 'string' || !Object.hasOwn(MOTIFS_URGENCE, code)) throw invalide('Choisissez un motif');
+    const motifCode = code as MotifUrgence;
+    const precision = typeof c.precision === 'string' ? c.precision.trim().slice(0, 300) : '';
+    if (motifCode === 'autre' && precision.length < 10) throw invalide('Précisez le motif (au moins 10 caractères)');
+    const motif = precision ? `${MOTIFS_URGENCE[motifCode]} — ${precision}` : MOTIFS_URGENCE[motifCode];
+    const fin = await base.transaction(async (tx) => {
       const r = await registre.resoudre(tx, numero);
-      await tx.requete(
-        `insert into lien_soins (employe_id, personne_cle, contexte, urgence, motif, fin) values ($1, $2, 'Accès d''urgence', true, $3, now() + interval '12 hours')`,
-        [d.id, r.personneCle, motif]);
+      const [l] = (await tx.requete<{ fin: Date }>(
+        `insert into lien_soins (employe_id, personne_cle, contexte, urgence, motif_code, motif, fin)
+         values ($1, $2, 'Accès d''urgence', true, $3, $4, now() + make_interval(hours => $5)) returning fin`,
+        [d.id, r.personneCle, motifCode, precision || null, DUREE_ACCES_URGENCE_H])) as [{ fin: Date }];
       await inscrire(tx, {
         demandeurType: 'clinique', demandeurId: d.id, sujet: r.numero, donnee: 'identite', action: 'ecrire', motif,
-        decision: 'permis', raison: 'Ouverture d\'un accès d\'urgence de 12 heures', urgence: true,
+        decision: 'permis', raison: `Ouverture d'un accès d'urgence de ${DUREE_ACCES_URGENCE_H} heures`, urgence: true,
       });
+      return l.fin;
     });
-    return rep.status(201).send({ duree: '12 heures' });
+    return rep.status(201).send({ expireLe: fin });
   });
 
   // ================= Registre (bureaucratie) =================
@@ -456,10 +467,23 @@ export function construireApp(o: Options) {
   app.get('/api/exploitation/acces-urgence', async (req) => {
     exigerEmploye(await demandeur(req), 'admintech');
     return base.requete(
-      `select l.id::text, e.nom as employe, e.role, e.etablissement, n.numero as sujet, l.motif, l.debut, l.fin
+      `select l.id::text, e.nom as employe, e.role, e.etablissement, n.numero as sujet, l.motif_code as "motifCode", l.motif,
+              l.debut, l.fin, l.revu_le as "revuLe", l.revue_decision as "decision"
          from lien_soins l join employe e on e.id = l.employe_id
          join numero_qc n on n.personne_cle = l.personne_cle and n.statut in ('actif','temporaire','decede')
-        where l.urgence order by l.debut desc limit 100`);
+        where l.urgence order by (l.revu_le is null) desc, l.debut desc limit 100`);
+  });
+
+  app.post<{ Params: { id: string } }>('/api/exploitation/acces-urgence/:id/revue', async (req, rep) => {
+    const d = exigerEmploye(await demandeur(req), 'admintech');
+    const decision = corps(req).decision;
+    if (decision !== 'justifie' && decision !== 'enquete') throw invalide('Décision : justifie ou enquete');
+    if (!/^\d+$/.test(req.params.id)) throw introuvable();
+    const r = await base.requete(
+      `update lien_soins set revu_le = now(), revu_par = $2, revue_decision = $3 where id = $1 and urgence and revu_le is null returning id`,
+      [req.params.id, d.id, decision]);
+    if (!r.length) throw introuvable('Accès introuvable ou déjà revu');
+    return rep.status(204).send();
   });
 
   app.get('/api/sante', async () => ({ ok: true }));
