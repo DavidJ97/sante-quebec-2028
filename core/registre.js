@@ -53,8 +53,9 @@ export class Registre {
     fiche.statut = statut;
     Object.assign(fiche, extra);
   }
-  #inscrire(cle, statut, motif) {
-    const numero = this.#nouveauNumero();
+  #inscrire(cle, statut, motif, impose) {
+    if (impose && (!estValide(impose) || this.numeros.has(normaliser(impose)))) throw new ErreurRegistre('Numéro imposé invalide ou déjà attribué');
+    const numero = impose ? normaliser(impose) : this.#nouveauNumero();
     const fiche = { numero, cle, statut, historique: [{ de: null, a: statut, motif, le: this.horloge().toISOString() }] };
     this.numeros.set(numero, fiche);
     return fiche;
@@ -84,20 +85,20 @@ export class Registre {
 
   // ---------- opérations ----------
   /** Inscrit une personne déjà née (migration depuis la RAMQ, nouvel arrivant). */
-  inscrire(donnees, { nam } = {}) {
+  inscrire(donnees, { nam, numero } = {}) {
     const cle = this.#nouvelleCle();
-    const fiche = this.#inscrire(cle, STATUTS.ACTIF, 'Inscription');
+    const fiche = this.#inscrire(cle, STATUTS.ACTIF, 'Inscription', numero);
     this.personnes.set(cle, { cle, numero: fiche.numero, parents: [], ...donnees });
     if (nam) this.lierNAM(nam, fiche.numero);
     return fiche.numero;
   }
 
   /** Réserve un numéro pour un bébé, environ un mois avant la naissance prévue. */
-  reserver({ mere, dateprevue }) {
+  reserver({ mere, dateprevue, numero }) {
     const m = this.resoudre(mere);
     if (m.fiche.statut !== STATUTS.ACTIF) throw new ErreurRegistre('La mère doit avoir un numéro actif');
     const cle = this.#nouvelleCle();
-    const fiche = this.#inscrire(cle, STATUTS.RESERVE, 'Réservation prénatale');
+    const fiche = this.#inscrire(cle, STATUTS.RESERVE, 'Réservation prénatale', numero);
     this.personnes.set(cle, { cle, numero: fiche.numero, nom: null, prenom: null, dateprevue, parents: [m.fiche.numero], parentsGestionnaires: [m.fiche.numero] });
     return fiche.numero;
   }
@@ -124,9 +125,9 @@ export class Registre {
   annuler(numero, motif) { this.#changerStatut(this.fiche(numero), STATUTS.ANNULE, motif); }
 
   /** Personne inconnue arrivée à l'urgence : numéro temporaire, fusionné plus tard. */
-  temporaire(description) {
+  temporaire(description, { numero } = {}) {
     const cle = this.#nouvelleCle();
-    const fiche = this.#inscrire(cle, STATUTS.TEMPORAIRE, 'Personne non identifiée');
+    const fiche = this.#inscrire(cle, STATUTS.TEMPORAIRE, 'Personne non identifiée', numero);
     this.personnes.set(cle, { cle, numero: fiche.numero, description, parents: [] });
     return fiche.numero;
   }

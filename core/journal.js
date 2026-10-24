@@ -45,6 +45,7 @@ export class Journal {
   alertes({ seuil = 10, fenetreMinutes = 120 } = {}) {
     const groupes = new Map();
     for (const e of this.entrees) {
+      if (e.demandeur.id === e.sujet) continue; // consulter son propre dossier n'est jamais suspect
       const k = `${e.demandeur.id}|${e.sujet}`;
       if (!groupes.has(k)) groupes.set(k, []);
       groupes.get(k).push(new Date(e.le).getTime());
