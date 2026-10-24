@@ -254,7 +254,7 @@ describe('photos', () => {
 
   it('la photo est une donnée d\'identité : servie par la passerelle et inscrite au journal', async () => {
     const [{ cle }] = (await base.requete<{ cle: string }>('select personne_cle as cle from numero_qc where numero = $1', [N.gisele])) as [{ cle: string }];
-    await base.requete(`insert into photo (personne_cle, image, type_mime, prise_le, source) values ($1, $2, 'image/png', '2025-03-04', 'point_de_service')`, [cle, PNG]);
+    await base.requete(`insert into photo (personne_cle, image, type_mime, prise_le, source) values ($1, $2, 'image/png', '2026-10-01', 'point_de_service')`, [cle, PNG]);
 
     const g = await connecterCitoyen(N.gisele!);
     const r = await get(g, `/api/personnes/${N.gisele}/photo`);
@@ -262,7 +262,7 @@ describe('photos', () => {
     expect(r.headers['content-type']).toBe('image/png');
     expect(r.headers['cache-control']).toContain('no-store');
     expect(Buffer.compare(r.rawPayload, PNG)).toBe(0);
-    expect((await get(g, '/api/moi')).json().photoPriseLe).toBe('2025-03-04');
+    expect((await get(g, '/api/moi')).json().photoPriseLe).toBe('2026-10-01');
 
     const k = await connecterCitoyen(N.kevin!);
     expect((await get(k, `/api/personnes/${N.gisele}/photo`)).statusCode).toBe(403);
@@ -273,6 +273,8 @@ describe('photos', () => {
     expect(traces.length).toBe(1);
 
     expect((await get(g, `/api/personnes/${N.sarah}/photo`)).statusCode).toBe(403);
+    const [{ cs }] = (await base.requete<{ cs: string }>('select personne_cle as cs from numero_qc where numero = $1', [N.sarah])) as [{ cs: string }];
+    await base.requete('delete from photo where personne_cle = $1', [cs]);
     const s = await connecterCitoyen(N.sarah!);
     expect((await get(s, `/api/personnes/${N.sarah}/photo`)).statusCode).toBe(404);
   });
